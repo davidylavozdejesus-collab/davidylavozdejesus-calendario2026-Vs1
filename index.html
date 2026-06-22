@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚀 Sistema Luffy — Calendario Inteligente Católico</title>
+  <meta name="description" content="Dashboard moderno tipo Notion para planificar y estructurar publicaciones católicas en redes sociales.">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              dark: '#080c14',
+              secondary: '#0f1524',
+              card: 'rgba(22, 30, 49, 0.65)',
+              accent: '#8b5cf6',
+              gold: '#f59e0b',
+              cyan: '#06b6d4',
+            }
+          },
+          fontFamily: {
+            sans: ['Outfit', 'sans-serif'],
+            serif: ['Playfair Display', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Custom CSS -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Exporting Utilities -->
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- SheetJS (xlsx) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-brand-dark text-slate-100 min-h-screen relative font-sans overflow-x-hidden antialiased">
+
+  <!-- Ambient Glow Backgrounds -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- MAIN APPLICATION SHELL -->
+  <div class="relative z-10 min-h-screen flex">
+    
+    <!-- SIDEBAR -->
+    <aside id="app-sidebar" class="w-64 bg-brand-secondary border-r border-slate-800 flex flex-col z-20 hidden">
+      <div class="p-6 border-b border-slate-800 flex items-center space-x-3 cursor-pointer" onclick="navigateTo('dashboard')">
+        <span class="text-3xl">🚀</span>
+        <div>
+          <h1 class="font-bold text-lg font-serif text-brand-gold tracking-wider">LUFFY SYS</h1>
+          <p class="text-xs text-slate-500 font-medium">Calendario Católico AI</p>
+        </div>
+      </div>
+      
+      <nav class="flex-grow p-4 space-y-2">
+        <button id="nav-dashboard" onclick="navigateTo('dashboard')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-all">
+          <span>🏠</span>
+          <span>Inicio</span>
+        </button>
+        
+        <button id="nav-generate" onclick="startGeneration()" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-all">
+          <span>📅</span>
+          <span>Crear Calendario</span>
+        </button>
+        
+        <button id="nav-history" onclick="navigateTo('history')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-all">
+          <span>📜</span>
+          <span>Historial</span>
+          <span id="history-badge" class="ml-auto bg-slate-800 text-brand-gold text-xs px-2 py-0.5 rounded-full hidden">0</span>
+        </button>
+
+        <button id="nav-alerts" onclick="navigateTo('alerts')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-all">
+          <span>🔔</span>
+          <span>Santoral & Alertas</span>
+        </button>
+
+        <button id="nav-firebase" onclick="navigateTo('firebase')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 transition-all">
+          <span>🔥</span>
+          <span>Sincronización</span>
+        </button>
+      </nav>
+      
+      <div class="p-4 border-t border-slate-800 text-center text-xs text-slate-500">
+        <p>Sistema Luffy v2.0</p>
+        <p class="mt-1 text-slate-600">Simulado: 21 Jun 2026</p>
+      </div>
+    </aside>
+
+    <!-- MAIN WINDOW AREA -->
+    <main class="flex-grow flex flex-col relative z-10 min-h-screen">
+      
+      <!-- TOP HEADER BAR -->
+      <header id="app-header" class="border-b border-slate-850 bg-brand-dark/40 backdrop-blur-md px-8 py-4 flex items-center justify-between hidden">
+        <div class="flex items-center space-x-3">
+          <span class="text-xs uppercase tracking-widest text-brand-gold font-bold" id="header-subtitle">Módulo de Planificación</span>
+        </div>
+        <div class="flex items-center space-x-4">
+          <!-- Active alert trigger -->
+          <div class="flex items-center space-x-2 bg-yellow-500/10 border border-yellow-500/30 px-3 py-1.5 rounded-xl animate-pulse">
+            <span class="text-sm">🔔 San Juan Bautista (24 Jun) en 3 días</span>
+            <button onclick="speakFeastAnnouncement('Nacimiento de San Juan Bautista')" class="text-xs text-brand-gold hover:underline">🔊 Escuchar</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- SECTIONS CONTAINER -->
+      <div class="flex-grow p-8 overflow-y-auto">
+
+        <!-- 1. SPLASH SCREEN (ENTRY SCREEN) -->
+        <section id="section-splash" class="flex flex-col items-center justify-center text-center space-y-8 min-h-[80vh] py-12">
+          <div class="space-y-4 max-w-xl">
+            <span class="text-8xl block animate-bounce">⛪✨</span>
+            <h1 class="text-6xl font-extrabold font-serif tracking-tight text-white">
+              SISTEMA <span class="text-brand-gold">LUFFY</span>
+            </h1>
+            <h2 class="text-xl font-medium text-slate-400 font-sans">
+              Calendario Inteligente & Planificador Litúrgico Católico
+            </h2>
+            <p class="text-sm text-slate-500 max-w-md mx-auto">
+              Optimiza tus publicaciones católicas en redes sociales según las festividades oficiales. Genera cuentos, reflexiones, canciones y acertijos adaptados por edad.
+            </p>
+          </div>
+
+          <button onclick="enterSystem()" class="bg-gradient-to-r from-brand-accent to-brand-gold hover:from-brand-accent/90 hover:to-brand-gold/90 text-white font-bold text-lg px-12 py-5 rounded-2xl shadow-xl shadow-purple-500/25 border border-brand-accent/40 transition-all hover:scale-105 active:scale-95 duration-200 tracking-wide uppercase">
+            🚀 Ingresar al Sistema
+          </button>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl w-full pt-8 text-left">
+            <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl">
+              <span class="text-xl block mb-1">👦</span>
+              <span class="text-xs font-bold text-slate-300 block">5 Audiencias</span>
+              <span class="text-[10px] text-slate-500">Reglas específicas</span>
+            </div>
+            <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl">
+              <span class="text-xl block mb-1">🔔</span>
+              <span class="text-xs font-bold text-slate-300 block">Liturgia Activa</span>
+              <span class="text-[10px] text-slate-500">Alertas por voz</span>
+            </div>
+            <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl">
+              <span class="text-xl block mb-1">📝</span>
+              <span class="text-xs font-bold text-slate-300 block">Editor de IA</span>
+              <span class="text-[10px] text-slate-500">Parseo automático</span>
+            </div>
+            <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl">
+              <span class="text-xl block mb-1">📊</span>
+              <span class="text-xs font-bold text-slate-300 block">Exportación</span>
+              <span class="text-[10px] text-slate-500">PDF, Excel, Word</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. WELCOME / AUDIENCE SELECTION SCREEN (STEP 1) -->
+        <section id="section-welcome" class="space-y-8 hidden animate-fade-in">
+          <div class="text-center max-w-xl mx-auto space-y-3 py-4">
+            <span class="text-5xl">👋</span>
+            <h3 class="text-3xl font-bold font-serif text-white">¿A quién va dirigido tu contenido?</h3>
+            <p class="text-slate-400 text-sm">Cada audiencia cuenta con reglas automáticas de horarios de publicación, plataformas asignadas y tipos de narrativas.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-6" id="audience-grid">
+            <!-- Dynamic cards will be rendered here -->
+          </div>
+        </section>
+
+        <!-- 3. FORM FOR METADATA (STEP 2) -->
+        <section id="section-form" class="max-w-2xl mx-auto glass-card p-8 rounded-2xl space-y-6 hidden animate-fade-in">
+          <h3 class="text-xl font-bold font-serif text-brand-gold border-b border-slate-700/50 pb-3">Información General del Proyecto</h3>
+          
+          <!-- Topic Title -->
+          <div class="form-group space-y-2">
+            <label class="text-sm font-semibold text-slate-300 block">Título o Tema del Mes:</label>
+            <div class="flex space-x-2">
+              <input type="text" id="topic-title" value="Jesús sana mi corazón" class="flex-grow px-4 py-3 rounded-xl text-white outline-none" />
+              <button onclick="clearField('topic-title')" class="bg-red-500/20 text-red-400 border border-red-500/30 px-4 rounded-xl hover:bg-red-500/30 transition">🗑️</button>
+            </div>
+          </div>
+
+          <!-- Month Dropdown -->
+          <div class="form-group space-y-2">
+            <label class="text-sm font-semibold text-slate-300 block">Seleccionar Mes:</label>
+            <div class="flex space-x-2">
+              <select id="select-month" class="flex-grow px-4 py-3 rounded-xl text-white outline-none">
+                <!-- Javascript will render options -->
+              </select>
+              <button onclick="clearField('select-month')" class="bg-red-500/20 text-red-400 border border-red-500/30 px-4 rounded-xl hover:bg-red-500/30 transition">🗑️</button>
+            </div>
+          </div>
+
+          <!-- Year Dropdown -->
+          <div class="form-group space-y-2">
+            <label class="text-sm font-semibold text-slate-300 block">Seleccionar Año:</label>
+            <div class="flex space-x-2">
+              <select id="select-year" class="flex-grow px-4 py-3 rounded-xl text-white outline-none">
+                <option value="2026" selected>2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+                <option value="2029">2029</option>
+                <option value="2030">2030</option>
+              </select>
+              <button onclick="clearField('select-year')" class="bg-red-500/20 text-red-400 border border-red-500/30 px-4 rounded-xl hover:bg-red-500/30 transition">🗑️</button>
+            </div>
+          </div>
+
+          <!-- Navigation Buttons -->
+          <div class="flex justify-between pt-4">
+            <button onclick="prevStep()" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-medium transition">⬅️ Volver</button>
+            <button onclick="nextStep()" class="bg-brand-accent hover:bg-brand-accent/80 text-white px-6 py-3 rounded-xl font-medium transition">➡️ Siguiente Paso</button>
+          </div>
+        </section>
+
+        <!-- 4. WEEKLY THEMES SCREEN (STEP 3) -->
+        <section id="section-themes" class="max-w-2xl mx-auto glass-card p-8 rounded-2xl space-y-6 hidden animate-fade-in">
+          <div class="border-b border-slate-700/50 pb-3 flex justify-between items-center">
+            <h3 class="text-xl font-bold font-serif text-brand-gold">Estructurar Temas por Semana</h3>
+            <div class="flex items-center space-x-3">
+              <span class="text-xs text-slate-400" id="weeks-count-badge">Semanas: 5</span>
+              <button onclick="clearAllWeeklyThemes()" id="btn-clear-all-themes" class="flex items-center space-x-1.5 bg-rose-500/20 hover:bg-rose-500/35 text-rose-400 border border-rose-500/40 px-4 py-1.5 rounded-xl text-xs font-bold transition-all hover:scale-105 active:scale-95 duration-150">
+                <span>🗑️</span>
+                <span>Limpiar Todo</span>
+              </button>
+            </div>
+          </div>
+          
+          <p class="text-slate-400 text-xs">Especifica manualmente el lema de cada semana. Se asignarán emojis de forma automática según la temática.</p>
+
+          <div id="weekly-themes-container" class="space-y-4">
+            <!-- Dynamic week inputs rendered here -->
+          </div>
+
+          <!-- Special Casilla for Adultos Semana 4 -->
+          <div id="special-adult-box" class="p-4 bg-purple-500/10 border border-purple-500/30 rounded-xl space-y-2 mt-4 hidden">
+            <label class="text-xs font-bold text-purple-300 block">⚙️ Casilla Especial Adultos (Semana 4):</label>
+            <input type="text" id="special-adult-topic" value="Sanación Interior" class="w-full px-4 py-2.5 rounded-xl text-white outline-none" />
+            <p class="text-[10px] text-slate-400">Al ser Semana 4 Adultos, se generará devocionario diario estructurado de Lunes a Viernes.</p>
+          </div>
+
+          <!-- Navigation Buttons -->
+          <div class="flex justify-between items-center pt-4">
+            <button onclick="prevStep()" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-medium transition">⬅️ Volver</button>
+            <button onclick="clearAllWeeklyThemes()" class="flex items-center space-x-2 bg-rose-500/20 hover:bg-rose-500/35 text-rose-400 border border-rose-500/40 px-5 py-3 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95 duration-150">
+              <span>🗑️</span>
+              <span>Limpiar Todo</span>
+            </button>
+            <button onclick="nextStep()" class="bg-brand-accent hover:bg-brand-accent/80 text-white px-6 py-3 rounded-xl font-medium transition">➡️ Siguiente Paso</button>
+          </div>
+        </section>
+
+        <!-- 5. CONTENT SOURCE SCREEN (STEP 4) -->
+        <section id="section-source" class="max-w-3xl mx-auto glass-card p-8 rounded-2xl space-y-6 hidden animate-fade-in">
+          <h3 class="text-xl font-bold font-serif text-brand-gold border-b border-slate-700/50 pb-3">Fuente de Contenido Base</h3>
+          
+          <!-- Source Tabs -->
+          <div class="flex border-b border-slate-800">
+            <button id="tab-source-paste" onclick="toggleSourceTab('paste')" class="px-6 py-3 text-sm font-semibold border-b-2 border-brand-accent text-white transition-all">
+              1️⃣ Pegar contenido IA
+            </button>
+            <button id="tab-source-upload" onclick="toggleSourceTab('upload')" class="px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-300 transition-all">
+              2️⃣ Subir Archivo
+            </button>
+          </div>
+
+          <!-- Paste Tab View -->
+          <div id="source-paste-view" class="space-y-4">
+            <p class="text-xs text-slate-400">Introduce el contenido copiado de tu IA preferida (ChatGPT, Gemini, Claude, NotebookLM, DeepSeek, etc.). El sistema lo organizará según las reglas litúrgicas.</p>
+            <textarea id="pasted-content" placeholder="Pegar contenido base (Desde cualquier IA)..." class="w-full h-48 px-4 py-3 rounded-xl text-white outline-none font-mono text-sm resize-none"></textarea>
+            <div class="flex justify-end space-x-2">
+              <button onclick="clearPastedContent()" class="bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-xl text-sm font-medium hover:bg-red-500/30 transition">
+                Eliminar texto
+              </button>
+            </div>
+          </div>
+
+          <!-- Upload Tab View -->
+          <div id="source-upload-view" class="space-y-4 hidden">
+            <p class="text-xs text-slate-400">Sube tus archivos base del mes. Aceptamos extensiones: PDF, DOCX, DOC, TXT, RTF, XLSX, CSV, PPTX, ODT, MD.</p>
+            
+            <div class="border-2 border-dashed border-slate-700 rounded-2xl p-8 text-center hover:border-brand-accent transition-all cursor-pointer relative">
+              <input type="file" id="file-uploader" onchange="processUploadedFile(event)" accept=".pdf,.docx,.doc,.txt,.rtf,.xlsx,.csv,.pptx,.odt,.md" class="absolute inset-0 opacity-0 cursor-pointer" />
+              <span class="text-4xl block mb-2">📁</span>
+              <h4 class="font-bold text-slate-300">Arrastra tu archivo aquí o haz clic para buscar</h4>
+              <p class="text-xs text-slate-500 mt-1">Soporta documentos de cualquier IA exportada</p>
+            </div>
+
+            <div id="upload-status" class="bg-slate-800/60 p-3 rounded-xl border border-slate-700/50 flex items-center justify-between hidden">
+              <span class="text-xs font-semibold text-slate-300" id="upload-filename-text">📄 Archivo: </span>
+              <button onclick="removeUploadedFile()" class="text-red-400 hover:text-red-300 text-xs font-bold">Remover</button>
+            </div>
+          </div>
+
+          <!-- Navigation Buttons -->
+          <div class="flex justify-between pt-4 border-t border-slate-800">
+            <button onclick="prevStep()" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-medium transition">⬅️ Volver</button>
+            
+            <button onclick="generateLuffyCalendar()" class="bg-gradient-to-r from-brand-accent to-brand-gold hover:from-brand-accent/90 hover:to-brand-gold/90 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-purple-500/25 transition flex items-center space-x-2">
+              <span>🔥</span>
+              <span>Generar con Luffy</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- 6. GENERATED CALENDAR VIEW (STEP 5) -->
+        <section id="section-calendar" class="space-y-8 hidden animate-fade-in">
+          
+          <!-- Summary header card & exports -->
+          <div class="glass-card p-6 rounded-2xl flex flex-wrap justify-between items-center gap-4">
+            <div>
+              <h3 class="text-2xl font-bold font-serif text-white" id="cal-summary-title">Jesús sana mi corazón</h3>
+              <p class="text-xs text-slate-400">
+                Audiencia: <span class="text-brand-gold font-bold" id="cal-summary-group">Adultos</span> — 
+                Mes: <span class="text-brand-accent font-semibold" id="cal-summary-month">Junio 2026</span>
+              </p>
+            </div>
+            
+            <!-- Exporters buttons -->
+            <div class="flex items-center space-x-2">
+              <button onclick="triggerPDFExport()" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-3 py-2 rounded-xl text-xs font-bold transition">PDF 📄</button>
+              <button onclick="triggerWordExport()" class="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-2 rounded-xl text-xs font-bold transition">Word 📝</button>
+              <button onclick="triggerExcelExport()" class="bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 px-3 py-2 rounded-xl text-xs font-bold transition">Excel 📊</button>
+              <button onclick="triggerTXTExport()" class="bg-slate-700/40 hover:bg-slate-700/60 text-slate-300 border border-slate-600 px-3 py-2 rounded-xl text-xs font-bold transition">TXT 📋</button>
+              <button onclick="triggerRTFExport()" class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30 px-3 py-2 rounded-xl text-xs font-bold transition">RTF 📜</button>
+            </div>
+          </div>
+
+          <!-- Calendar Weeks Cards Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8" id="calendar-weeks-grid">
+            <!-- Dynamic week cards will render here -->
+          </div>
+
+          <!-- Navigation Buttons -->
+          <div class="flex justify-start">
+            <button onclick="prevStep()" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-medium transition">⬅️ Volver a Editar Fuentes</button>
+          </div>
+        </section>
+
+        <!-- 7. MAIN DASHBOARD VIEW (DASHBOARD TAB) -->
+        <section id="section-dashboard" class="space-y-8 hidden animate-fade-in">
+          <div>
+            <h2 class="text-4xl font-extrabold font-serif tracking-tight text-white mb-2" id="db-welcome-title">Bienvenido al Panel Luffy</h2>
+            <p class="text-slate-400 text-sm">Genera y automatiza tus publicaciones católicas en base a las solemnidades, calendarios litúrgicos y reglas por audiencia.</p>
+          </div>
+
+          <!-- Metrics -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="glass-card p-6 rounded-2xl flex items-center space-x-4">
+              <div class="p-4 bg-purple-500/20 text-purple-400 rounded-xl text-2xl">📅</div>
+              <div>
+                <h5 class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Historial Guardado</h5>
+                <p class="text-3xl font-extrabold" id="metric-history-count">0 Calendarios</p>
+              </div>
+            </div>
+
+            <div class="glass-card p-6 rounded-2xl flex items-center space-x-4">
+              <div class="p-4 bg-amber-500/20 text-amber-400 rounded-xl text-2xl">✝️</div>
+              <div>
+                <h5 class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Próxima Festividad</h5>
+                <p class="text-xl font-bold">San Juan Bautista</p>
+                <p class="text-xs text-amber-500">24 de Junio (En 3 días)</p>
+              </div>
+            </div>
+
+            <div class="glass-card p-6 rounded-2xl flex items-center space-x-4">
+              <div class="p-4 bg-cyan-500/20 text-cyan-400 rounded-xl text-2xl">🔥</div>
+              <div>
+                <h5 class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Servidor Cloud</h5>
+                <p class="text-lg font-bold" id="metric-cloud-status">LocalStorage (Offline)</p>
+                <p class="text-xs text-slate-500">Datos protegidos en este navegador</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="glass-card p-8 rounded-2xl border-l-4 border-brand-accent">
+              <h3 class="text-2xl font-bold mb-3 font-serif">Crear Nuevo Calendario</h3>
+              <p class="text-slate-400 text-sm mb-6">Inicia el flujo inteligente de 5 pasos para crear guiones, asignar días de publicación, configurar horarios de carga por plataforma y sincronizar con tus redes.</p>
+              <button onclick="startGeneration()" class="bg-brand-accent hover:bg-brand-accent/80 text-white font-semibold px-6 py-3 rounded-xl transition">
+                🚀 Comenzar Asistente
+              </button>
+            </div>
+
+            <div class="glass-card p-8 rounded-2xl border-l-4 border-brand-gold">
+              <h3 class="text-2xl font-bold mb-3 font-serif">Últimos Calendarios</h3>
+              <div id="db-history-list" class="space-y-3">
+                <!-- Dynamically loaded history preview -->
+                <p class="text-slate-500 text-sm">No hay calendarios generados aún. ¡Comienza a crear uno!</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. HISTORY VIEW (HISTORY TAB) -->
+        <section id="section-history" class="space-y-6 hidden animate-fade-in">
+          <div>
+            <h2 class="text-3xl font-extrabold font-serif text-white">Historial de Planificación</h2>
+            <p class="text-slate-400 text-sm">Historial local con todos los calendarios litúrgicos católicos generados y guardados. Puedes cargarlos de nuevo o eliminarlos.</p>
+          </div>
+
+          <div id="history-empty-view" class="glass-card p-12 text-center rounded-2xl">
+            <span class="text-5xl block mb-3 font-semibold">📂</span>
+            <h4 class="font-bold text-slate-300">No hay registros guardados</h4>
+            <p class="text-slate-500 text-xs mt-1">Crea un calendario desde el generador y se archivará aquí automáticamente.</p>
+          </div>
+
+          <div id="history-table-view" class="glass-card rounded-2xl overflow-hidden border border-slate-800 hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-900 border-b border-slate-800 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                    <th class="p-4">Fecha Creación</th>
+                    <th class="p-4">Título / Tema</th>
+                    <th class="p-4">Audiencia</th>
+                    <th class="p-4">Mes / Año</th>
+                    <th class="p-4 text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="history-table-body" class="divide-y divide-slate-800/60 text-sm">
+                  <!-- Dynamically rendered logs rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 9. LITURGICAL ALERTS & SANTORAL (ALERTS TAB) -->
+        <section id="section-alerts" class="space-y-6 hidden animate-fade-in">
+          <div class="flex flex-wrap justify-between items-center gap-4">
+            <div>
+              <h2 class="text-3xl font-extrabold font-serif text-white">Santoral & Festividades Católicas</h2>
+              <p class="text-slate-400 text-sm">Lista de memorias, solemnidades y santos. Recibe avisos litúrgicos automáticos por voz y texto 3 días antes.</p>
+            </div>
+            
+            <button onclick="speakAnnouncementText('Sección de Santoral y Alertas Litúrgicas iniciada.')" class="bg-brand-accent hover:bg-brand-accent/80 text-white text-xs px-4 py-2.5 rounded-xl font-bold transition">
+              🔊 Probar Voz
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="santoral-months-grid">
+            <!-- 12 Months grids rendered by JS -->
+          </div>
+        </section>
+
+        <!-- 10. FIREBASE / SUPABASE SYNC CONFIG (FIREBASE TAB) -->
+        <section id="section-firebase" class="max-w-2xl mx-auto glass-card p-8 rounded-2xl space-y-6 hidden animate-fade-in">
+          <div class="border-b border-slate-700/50 pb-3">
+            <h2 class="text-2xl font-bold font-serif text-brand-gold">Conectar Base de Datos en la Nube</h2>
+            <p class="text-slate-400 text-xs mt-1">Sincroniza tus calendarios litúrgicos en Firebase o Supabase para acceder a ellos desde cualquier computadora o dispositivo móvil.</p>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex items-center justify-between p-4 bg-slate-900/60 rounded-xl border border-slate-800">
+              <div>
+                <h4 class="font-bold text-slate-200 text-sm">Estado de Sincronización</h4>
+                <p class="text-xs text-slate-500">Si está inactivo, los datos se guardan solo en LocalStorage.</p>
+              </div>
+              <button onclick="toggleCloudSync()" id="btn-cloud-toggle" class="px-4 py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 transition-all">
+                Inactivo 🔴
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-400 block">Firebase API Key:</label>
+                <input type="password" id="fb-apikey" placeholder="AIzaSyA1..." class="w-full px-4 py-2 text-xs rounded-xl text-white outline-none" />
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-400 block">Auth Domain:</label>
+                <input type="text" id="fb-authdomain" placeholder="luffy-catolico.firebaseapp.com" class="w-full px-4 py-2 text-xs rounded-xl text-white outline-none" />
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-400 block">Project ID:</label>
+                <input type="text" id="fb-projectid" placeholder="luffy-catolico" class="w-full px-4 py-2 text-xs rounded-xl text-white outline-none" />
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-400 block">App ID:</label>
+                <input type="text" id="fb-appid" placeholder="1:874390:web:d29487" class="w-full px-4 py-2 text-xs rounded-xl text-white outline-none" />
+              </div>
+            </div>
+
+            <button onclick="saveFirebaseCredentials()" class="w-full bg-brand-accent hover:bg-brand-accent/80 text-white font-bold py-2.5 rounded-xl text-xs transition">
+              💾 Guardar Credenciales
+            </button>
+
+            <div class="p-4 bg-slate-900/40 rounded-xl border border-slate-800 text-[10px] text-slate-500 space-y-2">
+              <span class="font-bold text-slate-400">¿Cómo funciona la sincronización?</span>
+              <p>Al guardar un nuevo calendario con Firebase Activo, la aplicación inicializa el SDK de Firebase Web en segundo plano y realiza una operación de sincronización en la colección <code className="text-brand-accent">calendarios_luffy</code>. Esto te permite tener tus calendarios listos en cualquier navegador sin perder el historial al borrar las cookies.</p>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Visual Toast Notification popup -->
+  <div id="toast-popup" class="fixed bottom-6 right-6 bg-slate-900 border border-brand-accent text-white px-5 py-3 rounded-2xl shadow-xl shadow-purple-500/10 z-50 flex items-center space-x-3 text-xs border-l-4 border-l-brand-accent hidden transition-all">
+    <span>🔥</span>
+    <span class="font-bold" id="toast-message-text">Mensaje del sistema</span>
+  </div>
+
+  <!-- CORE APPLICATION JAVASCRIPT (VANILLA ES6) -->
+  <script>
+    // --- LITURGICAL FEASTS DATABASE ---
+    const LITURGICAL_FEASTS = [
+      { day: 1, month: 0, name: "Santa María, Madre de Dios", type: "Solemnidad" },
+      { day: 6, month: 0, name: "Epifanía del Señor", type: "Solemnidad" },
+      { day: 25, month: 0, name: "Conversión de San Pablo", type: "Memorias" },
+      { day: 2, month: 1, name: "Presentación del Señor", type: "Solemnidad" },
+      { day: 11, month: 1, name: "Nuestra Señora de Lourdes", type: "Memorias" },
+      { day: 22, month: 1, name: "Cátedra de San Pedro", type: "Solemnidad" },
+      { day: 19, month: 2, name: "San José, Esposo de la Virgen María", type: "Solemnidad" },
+      { day: 25, month: 2, name: "Anunciación del Señor", type: "Solemnidad" },
+      { day: 25, month: 3, name: "San Marcos, Evangelista", type: "Santos" },
+      { day: 29, month: 3, name: "Santa Catalina de Siena", type: "Memorias" },
+      { day: 1, month: 4, name: "San José Obrero", type: "Memorias" },
+      { day: 13, month: 4, name: "Nuestra Señora de Fátima", type: "Memorias" },
+      { day: 31, month: 4, name: "Visitación de la Virgen María", type: "Santos" },
+      { day: 13, month: 5, name: "San Antonio de Padua", type: "Memorias" },
+      { day: 24, month: 5, name: "Nacimiento de San Juan Bautista", type: "Solemnidad" },
+      { day: 29, month: 5, name: "San Pedro y San Pablo", type: "Solemnidad" },
+      { day: 3, month: 6, name: "Santo Tomás, Apóstol", type: "Solemnidad" },
+      { day: 16, month: 6, name: "Nuestra Señora del Carmen", type: "Memorias" },
+      { day: 25, month: 6, name: "Santiago el Mayor, Apóstol", type: "Solemnidad" },
+      { day: 31, month: 6, name: "San Ignacio de Loyola", type: "Memorias" },
+      { day: 6, month: 7, name: "Transfiguración del Señor", type: "Solemnidad" },
+      { day: 15, month: 7, name: "Asunción de la Virgen María", type: "Solemnidad" },
+      { day: 28, month: 7, name: "San Agustín", type: "Memorias" },
+      { day: 8, month: 8, name: "Natividad de la Virgen María", type: "Solemnidad" },
+      { day: 14, month: 8, name: "Exaltación de la Santa Cruz", type: "Solemnidad" },
+      { day: 21, month: 8, name: "San Mateo, Apóstol y Evangelista", type: "Solemnidad" },
+      { day: 29, month: 8, name: "Arcángeles Miguel, Gabriel y Rafael", type: "Solemnidad" },
+      { day: 4, month: 9, name: "San Francisco de Asís", type: "Memorias" },
+      { day: 12, month: 9, name: "Nuestra Señora del Pilar", type: "Memorias" },
+      { day: 15, month: 9, name: "Santa Teresa de Jesús", type: "Memorias" },
+      { day: 22, month: 9, name: "San Juan Pablo II", type: "Memorias" },
+      { day: 1, month: 10, name: "Todos los Santos", type: "Solemnidad" },
+      { day: 2, month: 10, name: "Fieles Difuntos", type: "Memorias" },
+      { day: 30, month: 10, name: "San Andrés, Apóstol", type: "Solemnidad" },
+      { day: 8, month: 11, name: "Inmaculada Concepción", type: "Solemnidad" },
+      { day: 12, month: 11, name: "Nuestra Señora de Guadalupe", type: "Solemnidad" },
+      { day: 25, month: 11, name: "Natividad del Señor (Navidad)", type: "Solemnidad" },
+      { day: 27, month: 11, name: "San Juan, Apóstol y Evangelista", type: "Solemnidad" }
+    ];
+
+    // --- AUDIENCE DETAILS ---
+    const AUDIENCES = {
+      kids: {
+        title: "Niños",
+        icon: "👧",
+        description: "Contenido formativo e interactivo infantil. Cuentos, canciones, adivinanzas y shorts de sanación.",
+        tagline: "Semana 5: Shorts de adivinanzas"
+      },
+      teens: {
+        title: "Adolescentes",
+        icon: "🧑‍🎓",
+        description: "Contenido dinámico para jóvenes. Canción creada, retos, shorts y reflexiones al estilo Papa Francisco.",
+        tagline: "Semana 5: Reflexión estilo Papa Francisco"
+      },
+      adults: {
+        title: "Adultos",
+        icon: "👨‍👩‍👧‍👦",
+        description: "Sanación del alma, devocionarios, covers católicos, poemas y series completas.",
+        tagline: "Semana 4: Devocionario con casilla especial L-V"
+      },
+      jj: {
+        title: "Grupo JJ (Adolescentes)",
+        icon: "🙋‍♂️",
+        description: "Retos, acertijos, reflexiones y shorts enfocados al público de Pastoral Juvenil.",
+        tagline: "Semana 5: Shorts de adivinanzas"
+      },
+      escoge: {
+        title: "Grupo Escoge (Adultos)",
+        icon: "👨‍👩‍👧‍👦 Escoge",
+        description: "Comunidad de adultos enfocados en sanación interior, reflexiones y frases semanales.",
+        tagline: "Semana 5: Frases de sanación"
+      }
+    };
+
+    // --- SPANISH MONTHS ---
+    const MONTHS = [
+      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ];
+
+    // --- STATE MANAGEMENT ---
+    let state = {
+      hasEntered: false,
+      currentTab: "dashboard",
+      step: 1, // 1: Audience, 2: Form, 3: Themes, 4: Source, 5: Calendar
+      selectedGroup: "",
+      topicTitle: "Jesús sana mi corazón",
+      selectedMonth: new Date().getMonth(),
+      selectedYear: new Date().getFullYear(),
+      weeklyThemes: {
+        1: "El amor de Dios",
+        2: "El perdón en familia",
+        3: "Sanación del rencor",
+        4: "Liberación de la envidia",
+        5: "La victoria de la fe"
+      },
+      contentSourceType: "paste",
+      pastedContent: "",
+      uploadedFileName: "",
+      specialAdultTopic: "Sanación Interior",
+      generatedCalendar: null,
+      historyList: [],
+      firebaseConfig: {
+        enabled: false,
+        apiKey: "",
+        authDomain: "",
+        projectId: "",
+        appId: ""
+      }
+    };
+
+    // --- SOUND ENGINE ---
+    const playChimeSound = () => {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.12); // G5
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+      } catch (e) {}
+    };
+
+    const playClickSound = () => {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      } catch (e) {}
+    };
+
+    const speakAnnouncementText = (text) => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'es-ES';
+        utterance.rate = 1.0;
+        utterance.pitch = 1.1;
+        const voices = window.speechSynthesis.getVoices();
+        const spanishVoice = voices.find(voice => voice.lang.startsWith('es'));
+        if (spanishVoice) {
+          utterance.voice = spanishVoice;
+        }
+        window.speechSynthesis.speak(utterance);
+      }
+    };
+
+    const speakFeastAnnouncement = (feastName) => {
+      speakAnnouncementText(`Atención. Faltan tres días para la celebración de ${feastName}.`);
+    };
+
+    // --- AUTO EMOJI MAPPER ---
+    const getAutoEmoji = (text) => {
+      if (!text) return "📋";
+      const lower = text.toLowerCase();
+      if (lower.includes('amor') || lower.includes('cariño')) return "❤️";
+      if (lower.includes('amistad') || lower.includes('amigo') || lower.includes('hermano')) return "🤝";
+      if (lower.includes('rencor') || lower.includes('odio') || lower.includes('enojo')) return "⚔️";
+      if (lower.includes('envidia') || lower.includes('celos')) return "😔";
+      if (lower.includes('venganza') || lower.includes('castigo')) return "🔥";
+      if (lower.includes('paz') || lower.includes('tranquilidad') || lower.includes('espíritu')) return "🕊️";
+      if (lower.includes('fe') || lower.includes('dios') || lower.includes('jesus') || lower.includes('jesús') || lower.includes('cristo')) return "✝️";
+      if (lower.includes('perdon') || lower.includes('perdón') || lower.includes('misericordia')) return "🙏";
+      if (lower.includes('alegria') || lower.includes('alegría') || lower.includes('feliz') || lower.includes('felicidad')) return "😊";
+      if (lower.includes('triste') || lower.includes('dolor') || lower.includes('sufrimiento')) return "😢";
+      if (lower.includes('sanacion') || lower.includes('sanación') || lower.includes('salud') || lower.includes('medico')) return "🩹";
+      if (lower.includes('familia') || lower.includes('padres') || lower.includes('hijos')) return "👨‍👩‍👧‍👦";
+      if (lower.includes('esperanza') || lower.includes('futuro')) return "⚓";
+      if (lower.includes('oracion') || lower.includes('oración') || lower.includes('rezar') || lower.includes('rosario')) return "🤲";
+      if (lower.includes('pecado') || lower.includes('tentacion') || lower.includes('tentación')) return "🍎";
+      if (lower.includes('gracia') || lower.includes('milagro') || lower.includes('luz')) return "✨";
+      if (lower.includes('sabiduria') || lower.includes('sabiduría') || lower.includes('estudio')) return "📖";
+      if (lower.includes('canto') || lower.includes('cancion') || lower.includes('canción') || lower.includes('musica') || lower.includes('música')) return "🎵";
+      return "💡";
+    };
+
+    // --- FALLBACK SCRIPTS DATA ---
+    const getFallbackScripts = (group, weekNum, theme, specialTema = "") => {
+      const emoji = getAutoEmoji(theme);
+      const title = `${emoji} ${theme}`;
+      
+      const scripts = {
+        kids: [
+          `📖 Cuento de Sanación: Había una vez un pequeño cordero que se alejó del pastor y se lastimó. Pero Jesús lo buscó con amor, le vendó su patita y lo cargó. Jesús sana tu dolor hoy, solo confía en Él.`,
+          `🎬 Shorts de Sanación: ¿Sabías que cuando tienes miedo Jesús te abraza fuerte en tu corazón? Dile hoy: "Jesús, dame tu paz". ¡Comparte este Short con tu mejor amigo!`,
+          `🎵 Canción Creada: (Coro alegre) ¡Salta de alegría, canta al Salvador! Jesús sana las heridas con su inmenso amor. Pon tu mano en el corazón, siente su calor.`,
+          `❓ Preguntas y Respuestas: ¿Por qué Jesús cura a los enfermos? Porque nos ama tanto que no quiere vernos sufrir. Él es nuestro médico celestial. ¿Le has pedido hoy por algún enfermito?`,
+          `🤔 Shorts de Adivinanzas: Adivina adivinador... Es un amigo que no puedes ver con los ojos, pero vive en la Eucaristía y sana tu corazón cuando lo visitas. ¿Quién es? ¡Jesús!`
+        ],
+        teens: [
+          `🎬 Shorts de Sanación: No busques tu valor en los likes de las pantallas. Jesús te miró en la Cruz y dijo: "Vales toda mi sangre". Tus heridas sanan cuando te sabes amado por Dios.`,
+          `🤔 Shorts de Adivinanzas: Adivina: Es el libro que contiene el manual para sanar el alma, lleno de cartas de amor del Creador para ti. ¿Qué es? ¡La Biblia!`,
+          `🎵 Canción Creada: (Melodía acústica) En la tormenta escucho tu voz, sana mi ansiedad, lléname de fe. Tú eres mi roca, mi salvador, todo mi ser te alaba hoy.`,
+          `❓ Preguntas y Respuestas: ¿Cómo superar la ansiedad con la fe? Entregando tus planes al Sagrario. San Pablo dice: "No se preocupen por nada, oren por todo". Deja que Jesús sane tu mente.`,
+          `🕊️ Reflexión Estilo Papa Francisco: El Papa nos recuerda: "No tengan miedo de ser santos. No se dejen anestesiar por el vacío del mundo". Deja que el perdón sane tu juventud.`
+        ],
+        adults: [
+          `🎬 Shorts Serie de Sanación: Capítulo 1: Sanando la relación con el pasado. Jesús no te define por tus errores de ayer. Él te ofrece misericordia y renovación en el confesionario.`,
+          `🎬 Shorts de Sanación: El rencor es como tomar veneno esperando que el otro sufra. El perdón no justifica al otro, te libera a ti. Pídele a Jesús la gracia de perdonar hoy.`,
+          `🎵 Cover Católico: (Cover orante) "Nadie te ama como yo, mira la Cruz, esa es mi mayor prueba". Deja que estas notas inunden tu alma y sanen tus heridas de abandono.`,
+          `📖 Devocionario de Sanación: Devocional Diario sobre: ${specialTema || theme}. Rezamos hoy pidiendo al Espíritu Santo que cure los corazones afligidos. Lectura de Isaías 53:5: "Por sus llagas fuimos sanados".`,
+          `✍️ Poema Católico: En el silencio del sagrario ardiente, busqué consuelo a mi alma fatigada. Y escuché la voz del Amante sonriente: "Hijo mío, en mis llagas tu herida está sanada".`
+        ],
+        jj: [
+          `🎬 Shorts de Sanación: Las heridas de tu pasado no deciden tu futuro. Jesús entra hoy a tu vida para sanar las marcas de la traición y del rechazo. Levántate, ¡Él cuenta contigo!`,
+          `🤔 Shorts de Acertijos: Acertijo católico: Fue un joven que amaba la Eucaristía, usaba internet para evangelizar y hoy es el patrono de los jóvenes cibernautas. ¿Quién es? ¡El Beato Carlo Acutis!`,
+          `🕊️ Reflexión Católica: Vivir en comunidad sana la soledad. El grupo juvenil JJ es un refugio para caminar juntos hacia el Cielo. No camines solo, ¡Jesús te acompaña en tus hermanos!`,
+          `❓ Preguntas y Respuestas: ¿Qué hacer si pierdo la fe? Es normal dudar. Ora como el padre del evangelio: "Señor, creo, pero ayuda mi falta de fe". La confesión sana tu comunión con Dios.`,
+          `🤔 Shorts de Adivinanzas: Adivinanza: Es un sacramento donde le cuentas tus pecados a un sacerdote y sales libre, limpio y con el corazón sanado. ¿Qué es? ¡La Confesión!`
+        ],
+        escoge: [
+          `🎬 Shorts de Sanación: El matrimonio y la familia son templos de amor. Cuando haya conflictos, que la oración sea el bálsamo. Jesús restaura las relaciones heridas si lo invitan a cenar.`,
+          `🎬 Shorts de Sanación: El cansancio acumulado drena el espíritu. Jesús te dice hoy en Mateo 11:28: "Vengan a mí los que están cansados y yo los aliviaré". Regálate 15 minutos en oración.`,
+          `💬 Frases de Sanación: "El perdón es la llave de la libertad espiritual". Deja ir el pasado para que el Espíritu Santo pueda llenar tu copa de bendiciones hoy.`,
+          `🎬 Shorts de Sanación: Mirar la Cruz es contemplar la victoria sobre el dolor. No lleves tu cruz solo, deja que Cristo te ayude a cargarla y sane tu desesperanza.`,
+          `💬 Frases de Sanación: "Donde abunda el pecado, sobreabunda la gracia". No hay abismo tan profundo donde la mano sanadora de Dios no pueda alcanzarte.`
+        ]
+      };
+
+      const selectedScripts = scripts[group] || scripts['adults'];
+      const index = Math.min(weekNum - 1, selectedScripts.length - 1);
+      return {
+        title: title,
+        script: selectedScripts[index]
+      };
+    };
+
+    // --- UTILITY: CALCULATE WEEKS IN MONTH ---
+    const getWeeksInMonth = (year, month) => {
+      // Get first and last day of the month
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      
+      // Get day of week for first day (0=Sunday, 6=Saturday)
+      const firstDayOfWeek = firstDay.getDay();
+      const daysInMonth = lastDay.getDate();
+      
+      // Calculate total weeks (partial weeks count as full weeks)
+      const totalWeeks = Math.ceil((firstDayOfWeek + daysInMonth) / 7);
+      
+      // Return between 4 and 5 weeks (standard month range)
+      return Math.min(5, Math.max(4, totalWeeks));
+    };
+
+    // --- APPLICATION BOOTSTRAP ---
+    window.addEventListener('DOMContentLoaded', () => {
+      // Robust localStorage parser to prevent legacy structural conflicts
+      try {
+        const savedHistory = localStorage.getItem("luffy_history");
+        if (savedHistory) {
+          const parsed = JSON.parse(savedHistory);
+          if (Array.isArray(parsed)) {
+            state.historyList = parsed.filter(item => item && item.id && item.title && item.group);
+          }
+        }
+      } catch (e) {
+        state.historyList = [];
+      }
+      
+      const savedConfig = localStorage.getItem("luffy_firebase_config");
+      if (savedConfig) {
+        state.firebaseConfig = JSON.parse(savedConfig);
+        updateFirebaseUI();
+      }
+
+      // Render selectors
+      renderMonthDropdown();
+      renderSantoral();
+      updateHistoryUI();
+      
+      document.getElementById('history-badge').textContent = state.historyList.length;
+      if(state.historyList.length > 0) document.getElementById('history-badge').classList.remove('hidden');
+
+      showToast("Sistema Luffy iniciado de forma local.");
+    });
+
+    // --- TOAST NOTIFICATIONS ---
+    const showToast = (msg) => {
+      const toast = document.getElementById("toast-popup");
+      document.getElementById("toast-message-text").textContent = msg;
+      toast.classList.remove("hidden");
+      toast.classList.add("animate-bounce");
+      setTimeout(() => {
+        toast.classList.add("hidden");
+        toast.classList.remove("animate-bounce");
+      }, 3000);
+    };
+
+    // --- NAVIGATION FLOWS ---
+    const enterSystem = () => {
+      state.hasEntered = true;
+      document.getElementById("section-splash").classList.add("hidden");
+      document.getElementById("app-sidebar").classList.remove("hidden");
+      document.getElementById("app-header").classList.remove("hidden");
+      navigateTo("dashboard");
+      speakAnnouncementText("Bienvenido al sistema. Elige una opción.");
+    };
+
+    const navigateTo = (tabName) => {
+      playClickSound();
+      state.currentTab = tabName;
+      
+      document.getElementById("section-dashboard").classList.add("hidden");
+      document.getElementById("section-welcome").classList.add("hidden");
+      document.getElementById("section-form").classList.add("hidden");
+      document.getElementById("section-themes").classList.add("hidden");
+      document.getElementById("section-source").classList.add("hidden");
+      document.getElementById("section-calendar").classList.add("hidden");
+      document.getElementById("section-history").classList.add("hidden");
+      document.getElementById("section-alerts").classList.add("hidden");
+      document.getElementById("section-firebase").classList.add("hidden");
+
+      document.querySelectorAll("aside nav button").forEach(btn => {
+        btn.classList.remove("bg-brand-accent", "text-white", "shadow-lg", "shadow-purple-500/25");
+        btn.classList.add("text-slate-400");
+      });
+
+      const activeBtn = document.getElementById(`nav-${tabName}`);
+      if (activeBtn) {
+        activeBtn.classList.remove("text-slate-400");
+        activeBtn.classList.add("bg-brand-accent", "text-white", "shadow-lg", "shadow-purple-500/25");
+      }
+
+      if (tabName === 'dashboard') {
+        document.getElementById("section-dashboard").classList.remove("hidden");
+        document.getElementById("header-subtitle").textContent = "Panel de Control Principal";
+      } else if (tabName === 'generate') {
+        renderStep();
+      } else if (tabName === 'history') {
+        document.getElementById("section-history").classList.remove("hidden");
+        document.getElementById("header-subtitle").textContent = "Historial Planificado";
+        renderHistoryList();
+      } else if (tabName === 'alerts') {
+        document.getElementById("section-alerts").classList.remove("hidden");
+        document.getElementById("header-subtitle").textContent = "Santoral & Calendario Católico";
+      } else if (tabName === 'firebase') {
+        document.getElementById("section-firebase").classList.remove("hidden");
+        document.getElementById("header-subtitle").textContent = "Configuración Base de Datos Cloud";
+      }
+    };
+
+    const startGeneration = () => {
+      state.step = 1;
+      navigateTo("generate");
+    };
+
+    const renderStep = () => {
+      document.getElementById("section-welcome").classList.add("hidden");
+      document.getElementById("section-form").classList.add("hidden");
+      document.getElementById("section-themes").classList.add("hidden");
+      document.getElementById("section-source").classList.add("hidden");
+      document.getElementById("section-calendar").classList.add("hidden");
+
+      document.getElementById("header-subtitle").textContent = `Creación de Calendario — Paso ${state.step} de 5`;
+
+      if (state.step === 1) {
+        document.getElementById("section-welcome").classList.remove("hidden");
+        renderAudienceCards();
+      } else if (state.step === 2) {
+        document.getElementById("section-form").classList.remove("hidden");
+      } else if (state.step === 3) {
+        document.getElementById("section-themes").classList.remove("hidden");
+        renderWeeklyThemesInputs();
+      } else if (state.step === 4) {
+        document.getElementById("section-source").classList.remove("hidden");
+      } else if (state.step === 5) {
+        document.getElementById("section-calendar").classList.remove("hidden");
+      }
+    };
+
+    const nextStep = () => {
+      playClickSound();
+      if (state.step < 5) {
+        state.step++;
+        renderStep();
+      }
+    };
+
+    const prevStep = () => {
+      playClickSound();
+      if (state.step > 1) {
+        state.step--;
+        renderStep();
+      }
+    };
+
+    const renderAudienceCards = () => {
+      const grid = document.getElementById("audience-grid");
+      grid.innerHTML = "";
+      Object.keys(AUDIENCES).forEach(key => {
+        const aud = AUDIENCES[key];
+        const isSelected = state.selectedGroup === key;
+        const card = document.createElement("div");
+        card.className = `audience-card glass-card p-6 rounded-2xl flex flex-col text-center cursor-pointer ${isSelected ? 'selected' : ''}`;
+        card.onclick = () => selectAudienceGroup(key);
+        card.innerHTML = `
+          <span class="text-4xl mb-4">${aud.icon}</span>
+          <h4 class="font-bold text-lg text-white mb-2">${aud.title}</h4>
+          <p class="text-xs text-slate-400 flex-grow mb-4">${aud.description}</p>
+          <span class="bg-brand-accent/20 border border-brand-accent/30 text-brand-accent text-[10px] py-1 px-2 rounded-md font-semibold mt-auto uppercase tracking-wider block">
+            ${aud.tagline}
+          </span>
+        `;
+        grid.appendChild(card);
+      });
+    };
+
+    const selectAudienceGroup = (key) => {
+      playChimeSound();
+      state.selectedGroup = key;
+      
+      if (key === 'kids') {
+        state.weeklyThemes = {
+          1: "Amor de niños a Jesús",
+          2: "El abrazo del Buen Pastor",
+          3: "Cantar con alegría",
+          4: "Pedir perdón a los padres",
+          5: "La alegría del Sagrario"
+        };
+      } else if (key === 'teens' || key === 'jj') {
+        state.weeklyThemes = {
+          1: "Identidad real en Cristo",
+          2: "Ansiedad y redes sociales",
+          3: "Verdadera amistad cristiana",
+          4: "Sanando heridas familiares",
+          5: "El llamado a ser santos"
+        };
+      } else {
+        state.weeklyThemes = {
+          1: "Sanando las heridas del pasado",
+          2: "El bálsamo del perdón",
+          3: "Paz en medio de las pruebas",
+          4: "Restauración de matrimonios",
+          5: "La alegría de la confesión"
+        };
+      }
+      
+      state.step = 2;
+      renderStep();
+    };
+
+    const renderMonthDropdown = () => {
+      const select = document.getElementById("select-month");
+      select.innerHTML = "";
+      MONTHS.forEach((m, idx) => {
+        const option = document.createElement("option");
+        option.value = idx;
+        option.textContent = m;
+        if (idx === state.selectedMonth) option.selected = true;
+        select.appendChild(option);
+      });
+      
+      select.onchange = (e) => {
+        state.selectedMonth = parseInt(e.target.value);
+      };
+      
+      document.getElementById("topic-title").oninput = (e) => {
+        state.topicTitle = e.target.value;
+      };
+      
+      document.getElementById("select-year").onchange = (e) => {
+        state.selectedYear = parseInt(e.target.value);
+      };
+    };
+
+    const clearField = (fieldId) => {
+      playClickSound();
+      const el = document.getElementById(fieldId);
+      if (fieldId === 'topic-title') {
+        el.value = "";
+        state.topicTitle = "";
+      } else if (fieldId === 'select-month') {
+        el.value = new Date().getMonth();
+        state.selectedMonth = new Date().getMonth();
+      } else if (fieldId === 'select-year') {
+        el.value = 2026;
+        state.selectedYear = 2026;
+      }
+    };
+
+    const renderWeeklyThemesInputs = () => {
+      const container = document.getElementById("weekly-themes-container");
+      container.innerHTML = "";
+      
+      const weeksCount = getWeeksInMonth(state.selectedYear, state.selectedMonth);
+      document.getElementById("weeks-count-badge").textContent = `Semanas: ${weeksCount}`;
+
+      const specialBox = document.getElementById("special-adult-box");
+      if (state.selectedGroup === 'adults') {
+        specialBox.classList.remove("hidden");
+      } else {
+        specialBox.classList.add("hidden");
+      }
+
+      for (let w = 1; w <= weeksCount; w++) {
+        const themeValue = state.weeklyThemes[w] || `Lema de la semana ${w}`;
+        const div = document.createElement("div");
+        div.className = "space-y-1";
+        div.innerHTML = `
+          <label class="text-xs font-semibold text-slate-400 flex justify-between">
+            <span>Semana ${w}</span>
+            <span class="text-brand-accent" id="emoji-badge-${w}">Auto-Emoji: ${getAutoEmoji(themeValue)}</span>
+          </label>
+          <input type="text" value="${themeValue}" oninput="updateWeeklyTheme(${w}, this.value)" class="w-full px-4 py-2.5 rounded-xl text-white outline-none" />
+        `;
+        container.appendChild(div);
+      }
+    };
+
+    const updateWeeklyTheme = (weekNum, value) => {
+      state.weeklyThemes[weekNum] = value;
+      document.getElementById(`emoji-badge-${weekNum}`).textContent = `Auto-Emoji: ${getAutoEmoji(value)}`;
+    };
+
+    const clearAllWeeklyThemes = () => {
+      playClickSound();
+
+      // Determine how many weeks are shown
+      const weeksCount = getWeeksInMonth(state.selectedYear, state.selectedMonth);
+
+      // Reset state object
+      for (let w = 1; w <= 5; w++) {
+        state.weeklyThemes[w] = "";
+      }
+
+      // Clear all visible input fields and emoji badges
+      for (let w = 1; w <= weeksCount; w++) {
+        const input = document.querySelector(
+          `#weekly-themes-container input[oninput="updateWeeklyTheme(${w}, this.value)"]`
+        );
+        if (input) {
+          input.value = "";
+        }
+        const badge = document.getElementById(`emoji-badge-${w}`);
+        if (badge) {
+          badge.textContent = `Auto-Emoji: 📋`;
+        }
+      }
+
+      // Also clear the special adult topic
+      const specialInput = document.getElementById("special-adult-topic");
+      if (specialInput) {
+        specialInput.value = "";
+        state.specialAdultTopic = "";
+      }
+
+      showToast("🗑️ Todos los campos han sido limpiados.");
+    };
+
+    const toggleSourceTab = (type) => {
+      playClickSound();
+      state.contentSourceType = type;
+      if (type === 'paste') {
+        document.getElementById("tab-source-paste").className = "px-6 py-3 text-sm font-semibold border-b-2 border-brand-accent text-white transition-all";
+        document.getElementById("tab-source-upload").className = "px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-300 transition-all";
+        document.getElementById("source-paste-view").classList.remove("hidden");
+        document.getElementById("source-upload-view").classList.add("hidden");
+      } else {
+        document.getElementById("tab-source-upload").className = "px-6 py-3 text-sm font-semibold border-b-2 border-brand-accent text-white transition-all";
+        document.getElementById("tab-source-paste").className = "px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-300 transition-all";
+        document.getElementById("source-upload-view").classList.remove("hidden");
+        document.getElementById("source-paste-view").classList.add("hidden");
+      }
+    };
+
+    const clearPastedContent = () => {
+      playClickSound();
+      document.getElementById("pasted-content").value = "";
+      state.pastedContent = "";
+    };
+
+    const processUploadedFile = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        state.uploadedFileName = file.name;
+        document.getElementById("upload-filename-text").textContent = `📄 Archivo: ${file.name}`;
+        document.getElementById("upload-status").classList.remove("hidden");
+        showToast(`Archivo "${file.name}" cargado con éxito.`);
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          document.getElementById("pasted-content").value = e.target.result;
+          state.pastedContent = e.target.result;
+        };
+        if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+          reader.readAsText(file);
+        } else {
+          const mockTxt = `[Contenido estructurado del archivo: ${file.name}]\n\nSemana 1: Dios restaura las fuerzas\nSemana 2: Caminando sobre las aguas\nSemana 3: Sanando el dolor de la traición\nSemana 4: El Sagrario mi refugio\nSemana 5: Victoria pascual en familia`;
+          document.getElementById("pasted-content").value = mockTxt;
+          state.pastedContent = mockTxt;
+        }
+      }
+    };
+
+    const removeUploadedFile = () => {
+      playClickSound();
+      state.uploadedFileName = "";
+      document.getElementById("file-uploader").value = "";
+      document.getElementById("upload-status").classList.add("hidden");
+    };
+
+    // --- STEP 5: CALENDAR ENGINE ---
+    const generateLuffyCalendar = () => {
+      playClickSound();
+      
+      // Safety check: ensure a group is selected to prevent DOM/state crashes
+      if (!state.selectedGroup) {
+         showToast("Error: Selecciona una audiencia primero.");
+         navigateTo("generate");
+         state.step = 1;
+         renderStep();
+         return;
+      }
+
+      state.pastedContent = document.getElementById("pasted-content").value;
+      
+      let finalThemes = { ...state.weeklyThemes };
+      let parsedTitle = state.topicTitle || "Jesús sana mi corazón";
+      let customScripts = {};
+      
+      if (state.pastedContent.trim()) {
+        const lines = state.pastedContent.split('\n');
+        let currentWeekNum = null;
+        lines.forEach(line => {
+          const clean = line.trim();
+          if (clean.toLowerCase().includes("tema:") || clean.toLowerCase().includes("título:")) {
+            parsedTitle = clean.replace(/^(tema|título|titulo)\s*[:\-]\s*/i, "");
+          }
+          
+          const weekMatch = clean.match(/^semana\s*([1-5])\s*[:\-]?\s*(.*)/i);
+          if (weekMatch) {
+            currentWeekNum = parseInt(weekMatch[1]);
+            const themeContent = weekMatch[2].trim();
+            if (themeContent) {
+              finalThemes[currentWeekNum] = themeContent;
+            }
+          } else if (currentWeekNum && clean.length > 5) {
+            if (!customScripts[currentWeekNum]) customScripts[currentWeekNum] = [];
+            customScripts[currentWeekNum].push(clean);
+          }
+        });
+      }
+
+      const totalWeeks = getWeeksInMonth(state.selectedYear, state.selectedMonth);
+      const weeksData = [];
+      const specAdultTopic = document.getElementById("special-adult-topic").value;
+      
+      for (let w = 1; w <= totalWeeks; w++) {
+        const theme = finalThemes[w] || `Tema General Semana ${w}`;
+        const defaultScriptData = getFallbackScripts(state.selectedGroup, w, theme, specAdultTopic);
+        const customScriptText = customScripts[w] ? customScripts[w].join("\n") : "";
+        
+        let contentType = "";
+        let schedules = [];
+
+        if (state.selectedGroup === "kids") {
+          const types = ["📖 Cuento de sanación", "🎬 Shorts de sanación", "🎵 Canción creada", "❓ Preguntas y respuestas", "🤔 Shorts de adivinanzas"];
+          contentType = types[w - 1] || "📖 Cuento de sanación";
+          
+          if (w === 3) {
+            schedules = [
+              { day: "Viernes", platform: "TikTok", time: "4:30 PM" },
+              { day: "Viernes", platform: "Facebook", time: "5:30 PM" },
+              { day: "Viernes", platform: "YouTube", time: "6:00 PM" }
+            ];
+          } else {
+            schedules = [{ day: "Viernes", platform: "YouTube", time: "6:00 PM" }];
+          }
+        } else if (state.selectedGroup === "teens") {
+          const types = ["🎬 Shorts de sanación", "🤔 Shorts de adivinanzas", "🎵 Canción creada", "❓ Preguntas y respuestas", "🕊️ Reflexión estilo Papa Francisco"];
+          contentType = types[w - 1] || "🎬 Shorts de sanación";
+          
+          if (w === 2) {
+            schedules = [
+              { day: "Martes", platform: "TikTok", time: "5:30 PM" },
+              { day: "Martes", platform: "Facebook", time: "6:30 PM" },
+              { day: "Martes", platform: "YouTube", time: "7:00 PM" }
+            ];
+          } else {
+            schedules = [{ day: "Martes", platform: "YouTube", time: "7:00 PM" }];
+          }
+        } else if (state.selectedGroup === "adults") {
+          const types = ["🎬 Shorts serie de sanación", "🎬 Shorts de sanación", "🎵 Cover católico", `📖 Devocionario de sanación (${specAdultTopic})`, "✍️ Poema católico"];
+          contentType = types[w - 1] || "🎬 Shorts serie de sanación";
+          
+          if (w === 1) {
+            schedules = [
+              { day: "Lunes a Viernes", platform: "TikTok", time: "6:00 PM" },
+              { day: "Lunes a Viernes", platform: "Facebook", time: "6:30 PM" },
+              { day: "Lunes a Viernes", platform: "YouTube", time: "7:00 PM" }
+            ];
+          } else if (w === 4) {
+            schedules = [
+              { day: "Lunes a Viernes", platform: "YouTube", time: "7:00 PM" }
+            ];
+          } else {
+            schedules = [{ day: "Jueves", platform: "YouTube", time: "7:00 PM" }];
+          }
+        } else if (state.selectedGroup === "jj") {
+          const types = ["🎬 Shorts de sanación", "🤔 Shorts de acertijos", "🕊️ Reflexión católica", "❓ Preguntas y respuestas", "🤔 Shorts de adivinanzas"];
+          contentType = types[w - 1] || "🎬 Shorts de sanación";
+          
+          if (w === 1) {
+            schedules = [
+              { day: "Lunes", platform: "Facebook", time: "6:00 PM" },
+              { day: "Lunes", platform: "YouTube", time: "7:00 PM" }
+            ];
+          } else {
+            schedules = [{ day: "Lunes", platform: "YouTube", time: "7:00 PM" }];
+          }
+        } else if (state.selectedGroup === "escoge") {
+          const types = ["🎬 Shorts de sanación", "🎬 Shorts de sanación", "💬 Frases de sanación", "🎬 Shorts de sanación", "💬 Frases de sanación"];
+          contentType = types[w - 1] || "🎬 Shorts de sanación";
+          schedules = [{ day: "Miércoles", platform: "Facebook", time: "7:00 PM" }];
+        }
+
+        weeksData.push({
+          weekNum: w,
+          theme: theme,
+          emoji: getAutoEmoji(theme),
+          contentType: contentType,
+          script: customScriptText || defaultScriptData.script,
+          title: defaultScriptData.title,
+          schedules: schedules
+        });
+      }
+
+      state.generatedCalendar = {
+        id: Date.now().toString(),
+        dateCreated: new Date().toLocaleDateString("es-ES", {
+          day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+        }),
+        title: parsedTitle,
+        group: state.selectedGroup,
+        month: state.selectedMonth,
+        year: state.selectedYear,
+        weeks: weeksData
+      };
+
+      // Save history
+      state.historyList = [state.generatedCalendar, ...state.historyList];
+      localStorage.setItem("luffy_history", JSON.stringify(state.historyList));
+
+      // Badges update
+      document.getElementById('history-badge').textContent = state.historyList.length;
+      document.getElementById('history-badge').classList.remove('hidden');
+
+      // Update UI Views
+      renderCalendarResultsUI();
+      updateHistoryUI();
+
+      // Trigger Alert Voice for month June (Liturgical Feast)
+      checkForLiturgicalFeastAlerts(state.selectedMonth);
+
+      state.step = 5;
+      renderStep();
+      showToast(state.firebaseConfig.enabled ? "Sincronizado con Firebase 🔥" : "Calendario guardado en Historial local.");
+    };
+
+    const checkForLiturgicalFeastAlerts = (month) => {
+      const todayDay = 21;
+      const todayMonth = 5; // June
+      
+      const feastsInMonth = LITURGICAL_FEASTS.filter(f => f.month === month);
+      feastsInMonth.forEach(feast => {
+        if (month === todayMonth && (feast.day - todayDay === 3)) {
+          setTimeout(() => {
+            speakFeastAnnouncement(feast.name);
+            showToast(`🔔 ALERTA: Faltan 3 días para celebrar ${feast.name}`);
+          }, 1000);
+        }
+      });
+    };
+
+    // Robust UI renderer protecting against undefined group title values
+    const renderCalendarResultsUI = () => {
+      const cal = state.generatedCalendar;
+      if (!cal) return;
+
+      const groupData = AUDIENCES[cal.group] || { title: "General", icon: "📋" };
+
+      document.getElementById("cal-summary-title").textContent = cal.title;
+      document.getElementById("cal-summary-group").textContent = groupData.title;
+      document.getElementById("cal-summary-month").textContent = `${MONTHS[cal.month]} ${cal.year}`;
+
+      const grid = document.getElementById("calendar-weeks-grid");
+      grid.innerHTML = "";
+
+      cal.weeks.forEach(w => {
+        const div = document.createElement("div");
+        div.className = "glass-card p-6 rounded-2xl border-t-4 border-brand-accent space-y-4";
+        
+        let schedulesHtml = "";
+        w.schedules.forEach(s => {
+          const pName = s.platform ? s.platform.toLowerCase() : 'youtube';
+          const platClass = pName === 'youtube' ? 'platform-youtube' : pName === 'facebook' ? 'platform-facebook' : 'platform-tiktok';
+          schedulesHtml += `
+            <div class="px-3 py-1.5 rounded-lg text-xs font-medium ${platClass} flex items-center space-x-2">
+              <span>📱 ${s.platform || "YouTube"}</span>
+              <span class="opacity-75">|</span>
+              <span>📅 ${s.day || "Viernes"}</span>
+              <span class="opacity-75">|</span>
+              <span class="text-brand-gold font-bold">⏰ ${s.time || "7:00 PM"}</span>
+            </div>
+          `;
+        });
+
+        div.innerHTML = `
+          <div class="flex justify-between items-start border-b border-slate-800 pb-3">
+            <div>
+              <h4 class="text-lg font-bold text-white flex items-center space-x-2">
+                <span>Semana ${w.weekNum}</span>
+                <span class="text-xs bg-slate-800 px-2 py-0.5 rounded text-brand-gold">${w.emoji} ${w.theme}</span>
+              </h4>
+              <span class="text-xs text-brand-accent font-semibold">${w.contentType}</span>
+            </div>
+            <span class="text-xs text-slate-500">Programado</span>
+          </div>
+
+          <div class="space-y-2">
+            <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Cronograma de Publicación:</h5>
+            <div class="flex flex-wrap gap-2">${schedulesHtml}</div>
+          </div>
+
+          <div class="space-y-1">
+            <label class="text-xs font-bold text-slate-400 block">Guión de la Publicación (Editable):</label>
+            <textarea id="script-week-${w.weekNum}" oninput="editScript(${w.weekNum}, this.value)" class="w-full h-32 px-3 py-2 text-xs rounded-xl text-white outline-none resize-none font-mono"></textarea>
+          </div>
+
+          <div class="flex space-x-2 pt-2">
+            <button onclick="copyToClipboard('${w.weekNum}', 'script')" class="flex-grow bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 py-2 rounded-xl text-xs font-semibold transition">
+              📋 Copiar Guión
+            </button>
+            <button onclick="copyToClipboard('${w.weekNum}', 'full')" class="flex-grow bg-brand-accent/20 hover:bg-brand-accent/30 border border-brand-accent/30 text-brand-accent py-2 rounded-xl text-xs font-semibold transition">
+              🔗 Copiar Post Completo
+            </button>
+          </div>
+        `;
+        // Safely set textarea content using DOM (avoids backtick/template-literal issues)
+        const scriptTA = div.querySelector(`#script-week-${w.weekNum}`);
+        if (scriptTA) scriptTA.value = w.script;
+        grid.appendChild(div);
+      });
+    };
+
+    const editScript = (weekNum, val) => {
+      if (state.generatedCalendar) {
+        state.generatedCalendar.weeks.forEach(w => {
+          if (w.weekNum === weekNum) w.script = val;
+        });
+      }
+    };
+
+    const copyToClipboard = (weekNum, type) => {
+      const cal = state.generatedCalendar;
+      if (!cal) return;
+      
+      const week = cal.weeks.find(w => w.weekNum == weekNum);
+      if (!week) return;
+
+      // Read live textarea value in case user edited the script
+      const scriptTA = document.querySelector(`#script-week-${weekNum}`);
+      const currentScript = scriptTA ? scriptTA.value : week.script;
+
+      const groupData = AUDIENCES[cal.group] || { title: "General" };
+
+      if (type === 'script') {
+        navigator.clipboard.writeText(currentScript).catch(() => {
+          // Fallback for browsers that block clipboard
+          const el = document.createElement('textarea');
+          el.value = currentScript;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand('copy');
+          document.body.removeChild(el);
+        });
+        showToast(`Guión de Semana ${weekNum} copiado.`);
+      } else {
+        const tags = `#Catolico #Sanacion #Fe #Evangelio #${groupData.title.replace(/\s+/g, '')}`;
+        const fullPost = `${week.title}\n\n${currentScript}\n\n${tags}`;
+        navigator.clipboard.writeText(fullPost).catch(() => {
+          const el = document.createElement('textarea');
+          el.value = fullPost;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand('copy');
+          document.body.removeChild(el);
+        });
+        showToast(`Publicación completa de Semana ${weekNum} copiada.`);
+      }
+    };
+
+    // --- HISTORIAL VIEW CONTROL ---
+    const updateHistoryUI = () => {
+      const count = state.historyList.length;
+      document.getElementById("metric-history-count").textContent = `${count} Calendarios`;
+      
+      const listDiv = document.getElementById("db-history-list");
+      if (count === 0) {
+        listDiv.innerHTML = `<p class="text-slate-500 text-sm">No hay calendarios generados aún. ¡Comienza a crear uno!</p>`;
+      } else {
+        listDiv.innerHTML = "";
+        state.historyList.slice(0, 3).map(item => {
+          const groupData = AUDIENCES[item.group] || { title: "General" };
+          const div = document.createElement("div");
+          div.className = "p-3 bg-slate-800/40 rounded-xl border border-slate-700/50 flex items-center justify-between cursor-pointer hover:bg-slate-700/40 transition";
+          div.onclick = () => loadHistoryEntry(item.id);
+          div.innerHTML = `
+            <div>
+              <p class="font-bold text-sm text-slate-200">${item.title}</p>
+              <p class="text-xs text-slate-500">${groupData.title} — ${MONTHS[item.month]} ${item.year}</p>
+            </div>
+            <span class="text-xs text-brand-gold">${item.dateCreated}</span>
+          `;
+          listDiv.appendChild(div);
+        });
+      }
+    };
+
+    const renderHistoryList = () => {
+      const emptyView = document.getElementById("history-empty-view");
+      const tableView = document.getElementById("history-table-view");
+      const tableBody = document.getElementById("history-table-body");
+
+      if (state.historyList.length === 0) {
+        emptyView.classList.remove("hidden");
+        tableView.classList.add("hidden");
+      } else {
+        emptyView.classList.add("hidden");
+        tableView.classList.remove("hidden");
+        tableBody.innerHTML = "";
+
+        state.historyList.forEach(item => {
+          const groupData = AUDIENCES[item.group] || { title: "General" };
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-slate-800/30 transition";
+          tr.innerHTML = `
+            <td class="p-4 text-slate-400">${item.dateCreated}</td>
+            <td class="p-4 font-semibold text-slate-200">${item.title}</td>
+            <td class="p-4">
+              <span class="bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs px-2 py-1 rounded-md font-medium">
+                ${groupData.title}
+              </span>
+            </td>
+            <td class="p-4 text-slate-300">${MONTHS[item.month]} ${item.year}</td>
+            <td class="p-4 text-center space-x-2">
+              <button onclick="loadHistoryEntry('${item.id}')" class="bg-brand-accent hover:bg-brand-accent/80 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">👁️ Ver</button>
+              <button onclick="deleteHistoryEntry('${item.id}', event)" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition">🗑️ Eliminar</button>
+            </td>
+          `;
+          tableBody.appendChild(tr);
+        });
+      }
+    };
+
+    const loadHistoryEntry = (id) => {
+      const entry = state.historyList.find(x => x.id == id);
+      if (entry) {
+        state.generatedCalendar = entry;
+        state.selectedGroup = entry.group;
+        state.topicTitle = entry.title;
+        state.selectedMonth = entry.month;
+        state.selectedYear = entry.year;
+        
+        renderCalendarResultsUI();
+        state.step = 5;
+        navigateTo("generate");
+      }
+    };
+
+    const deleteHistoryEntry = (id, event) => {
+      event.stopPropagation();
+      playClickSound();
+      state.historyList = state.historyList.filter(x => x.id != id);
+      localStorage.setItem("luffy_history", JSON.stringify(state.historyList));
+      
+      document.getElementById('history-badge').textContent = state.historyList.length;
+      if (state.historyList.length === 0) document.getElementById('history-badge').classList.add('hidden');
+      
+      renderHistoryList();
+      updateHistoryUI();
+      showToast("Calendario eliminado.");
+    };
+
+    // --- SANTORAL DISPLAY RENDER ---
+    const renderSantoral = () => {
+      const grid = document.getElementById("santoral-months-grid");
+      grid.innerHTML = "";
+
+      MONTHS.forEach((monthName, mIdx) => {
+        const monthFeasts = LITURGICAL_FEASTS.filter(f => f.month === mIdx);
+        
+        let feastsRows = "";
+        monthFeasts.forEach(feast => {
+          feastsRows += `
+            <div onclick="speakAnnouncementText('Celebración litúrgica: ${feast.name}')" class="p-2 bg-slate-900/40 hover:bg-slate-800/40 rounded-lg text-xs flex justify-between items-center cursor-pointer transition border border-slate-800/40">
+              <div>
+                <span class="font-bold text-slate-200">Día ${feast.day}:</span>
+                <span class="ml-1 text-slate-300">${feast.name}</span>
+              </div>
+              <span class="px-1.5 py-0.5 rounded-[4px] text-[8px] font-bold ${feast.type === 'Solemnidad' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : feast.type === 'Santos' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'bg-slate-800 text-slate-400'}">
+                ${feast.type}
+              </span>
+            </div>
+          `;
+        });
+
+        const card = document.createElement("div");
+        card.className = "glass-card p-5 rounded-2xl border border-slate-800 space-y-3";
+        card.innerHTML = `
+          <h3 class="font-serif font-bold text-brand-gold text-lg border-b border-slate-800 pb-2 flex justify-between items-center">
+            <span>${monthName}</span>
+            <span class="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-400 font-sans">${monthFeasts.length} Festividades</span>
+          </h3>
+          <div class="space-y-2 max-h-48 overflow-y-auto pr-1">${feastsRows}</div>
+        `;
+        grid.appendChild(card);
+      });
+    };
+
+    // --- FIREBASE SETTINGS CONTROL ---
+    const toggleCloudSync = () => {
+      playClickSound();
+      state.firebaseConfig.enabled = !state.firebaseConfig.enabled;
+      updateFirebaseUI();
+    };
+
+    const updateFirebaseUI = () => {
+      const btn = document.getElementById("btn-cloud-toggle");
+      const statusText = document.getElementById("metric-cloud-status");
+      
+      if (state.firebaseConfig.enabled) {
+        btn.textContent = "Activo 🟢";
+        btn.className = "px-4 py-2 rounded-xl text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30 transition-all";
+        statusText.textContent = "Firebase Sync Active 🔥";
+      } else {
+        btn.textContent = "Inactivo 🔴";
+        btn.className = "px-4 py-2 rounded-xl text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 transition-all";
+        statusText.textContent = "LocalStorage (Offline)";
+      }
+    };
+
+    const saveFirebaseCredentials = () => {
+      playClickSound();
+      state.firebaseConfig.apiKey = document.getElementById("fb-apikey").value;
+      state.firebaseConfig.authDomain = document.getElementById("fb-authdomain").value;
+      state.firebaseConfig.projectId = document.getElementById("fb-projectid").value;
+      state.firebaseConfig.appId = document.getElementById("fb-appid").value;
+      
+      localStorage.setItem("luffy_firebase_config", JSON.stringify(state.firebaseConfig));
+      showToast("Configuración Firebase guardada localmente.");
+    };
+
+    // --- MULTI EXPORT UTILITIES ---
+    const triggerTXTExport = () => {
+      const cal = state.generatedCalendar;
+      if (!cal) return;
+      const groupData = AUDIENCES[cal.group] || { title: "General" };
+
+      let content = `🚀 SISTEMA LUFFY - CALENDARIO INTELIGENTE CATÓLICO\n`;
+      content += `Tema General: ${cal.title}\n`;
+      content += `Audiencia: ${groupData.title}\n`;
+      content += `Mes: ${MONTHS[cal.month]} ${cal.year}\n`;
+      content += `==================================================\n\n`;
+
+      cal.weeks.forEach(w => {
+        content += `SEMANA ${w.weekNum}: ${w.theme}\n`;
+        content += `Tipo de Contenido: ${w.contentType}\n`;
+        content += `Detalle/Guión:\n${w.script}\n`;
+        content += `Programación:\n`;
+        w.schedules.forEach(s => {
+          content += `- [${s.platform}] Día: ${s.day} a las ${s.time}\n`;
+        });
+        content += `--------------------------------------------------\n\n`;
+      });
+
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Luffy_Calendario_${cal.title.replace(/\s+/g, '_')}.txt`;
+      a.click();
+      showToast("TXT exportado.");
+    };
+
+    const triggerRTFExport = () => {
+      const cal = state.generatedCalendar;
+      if (!cal) return;
+      const groupData = AUDIENCES[cal.group] || { title: "General" };
+
+      let rtf = `{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Arial;}}\n`;
+      rtf += `{\\colortbl;\\red139\\green92\\blue246;\\red245\\green158\\blue11;}\n`;
+      rtf += `\\fs28\\b 🚀 SISTEMA LUFFY - CALENDARIO CATÓLICO\\b0\\par\n`;
+      rtf += `\\fs22 Tema: ${cal.title}\\par\n`;
+      rtf += `Audiencia: ${groupData.title}\\par\n`;
+      rtf += `Mes: ${MONTHS[cal.month]} ${cal.year}\\par\n`;
+      rtf += `==================================================\\par\\par\n`;
+
+      cal.weeks.forEach(w => {
+        rtf += `\\fs24\\cf2\\b SEMANA ${w.weekNum}: ${w.theme}\\b0\\cf0\\par\n`;
+        rtf += `\\b Contenido:\\b0 ${w.contentType}\\par\n`;
+        rtf += `\\b Programación:\\b0 ${w.schedules.map(s => `${s.platform} (${s.day} ${s.time})`).join(', ')}\\par\n`;
+        rtf += `\\b Script/Guión:\\b0\\par ${w.script.replace(/\n/g, '\\par ')}\\par\\par\n`;
+        rtf += `--------------------------------------------------\\par\\par\n`;
+      });
+      rtf += `}`;
+
+      const blob = new Blob([rtf], { type: "application/rtf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Luffy_Calendario_${cal.title.replace(/\s+/g, '_')}.rtf`;
+      a.click();
+      showToast("RTF exportado.");
+    };
+
+    const triggerExcelExport = () => {
+      const cal = state.generatedCalendar;
+      if (!cal) return;
+      const data = [];
+      
+      cal.weeks.forEach(w => {
+        w.schedules.forEach(s => {
+          data.push({
+            "Semana": `Semana ${w.weekNum}`,
+            "Tema": w.theme,
+            "Formato de Publicación": w.contentType,
+            "Plataforma": s.platform,
+            "Día Publicación": s.day,
+            "Hora": s.time,
+            "Guión / Script": w.script
+          });
+        });
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, "Publicaciones");
+      
+      const maxLens = {};
+      data.forEach(row => {
+        Object.keys(row).forEach(key => {
+          const valStr = String(row[key] || "");
+          maxLens[key] = Math.max(maxLens[key] || 10, valStr.length);
+        });
+      });
+      ws['!cols'] = Object.keys(maxLens).map(key => ({ wch: Math.min(maxLens[key], 45) }));
+
+      XLSX.writeFile(wb, `Luffy_Calendario_${cal.title.replace(/\s+/g, '_')}.xlsx`);
+      showToast("Excel exportado.");
+    };
+
+    const triggerWordExport = () => {
+      const cal = state.generatedCalendar;
+      if (!cal) return;
+      const groupData = AUDIENCES[cal.group] || { title: "General" };
+      const monthName = MONTHS[cal.month];
+      
+      const htmlContent = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <title>Calendario Católico Luffy</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #ffffff; color: #1e293b; padding: 20px; }
+            h1 { color: #8b5cf6; font-size: 26px; border-bottom: 2px solid #8b5cf6; padding-bottom: 8px; }
+            h2 { color: #f59e0b; font-size: 20px; margin-top: 30px; }
+            .meta { font-size: 14px; color: #64748b; margin-bottom: 20px; }
+            table { border-collapse: collapse; width: 100%; margin-top: 15px; margin-bottom: 15px; }
+            th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; font-size: 14px; }
+            th { background-color: #f8fafc; font-weight: bold; color: #0f172a; }
+            .script-box { background-color: #f1f5f9; padding: 15px; border-left: 4px solid #8b5cf6; font-style: italic; margin-top: 10px; border-radius: 4px; }
+          </style>
+        </head>
+        <body>
+          <h1>🚀 Sistema Luffy - Calendario Católico de Publicaciones</h1>
+          <div class="meta">
+            <strong>Título del Proyecto:</strong> ${cal.title}<br/>
+            <strong>Público Objetivo:</strong> ${groupData.title}<br/>
+            <strong>Mes/Año:</strong> ${monthName} ${cal.year}<br/>
+            <strong>Fecha Generación:</strong> ${cal.dateCreated}
+          </div>
+          <hr/>
+          ${cal.weeks.map(w => `
+            <h2>Semana ${w.weekNum}: ${w.theme}</h2>
+            <p><strong>Tipo de Contenido:</strong> ${w.contentType}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Plataforma</th>
+                  <th>Día programado</th>
+                  <th>Hora</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${w.schedules.map(s => `
+                  <tr>
+                    <td><strong>${s.platform}</strong></td>
+                    <td>${s.day}</td>
+                    <td>${s.time}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            <div class="script-box">
+              <strong>Guión de Publicación:</strong><br/>
+              ${w.script.replace(/\n/g, '<br/>')}
+            </div>
+            <hr/>
+          `).join('')}
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Luffy_Calendario_${cal.title.replace(/\s+/g, '_')}.doc`;
+      a.click();
+      showToast("Word exportado.");
+    };
+
+    const triggerPDFExport = () => {
+      const cal = state.generatedCalendar;
+      if (!cal) return;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      const groupData = AUDIENCES[cal.group] || { title: "General" };
+      const monthName = MONTHS[cal.month];
+
+      doc.setFillColor(8, 12, 20);
+      doc.rect(0, 0, 210, 40, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text("SISTEMA LUFFY", 14, 18);
+      
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("Calendario Litúrgico Inteligente Católico", 14, 25);
+      
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(12);
+      doc.text(`Proyecto: ${cal.title}`, 14, 50);
+      doc.text(`Audiencia: ${groupData.title}`, 14, 57);
+      doc.text(`Mes: ${monthName} ${cal.year}`, 14, 64);
+      doc.text(`Creado: ${cal.dateCreated}`, 14, 71);
+      
+      doc.setDrawColor(226, 232, 240);
+      doc.line(14, 76, 196, 76);
+      
+      let yPos = 85;
+      
+      cal.weeks.forEach(w => {
+        if (yPos > 240) {
+          doc.addPage();
+          yPos = 20;
+        }
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(139, 92, 246);
+        doc.text(`Semana ${w.weekNum}: ${w.theme}`, 14, yPos);
+        yPos += 7;
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Tipo de contenido: ${w.contentType}`, 14, yPos);
+        yPos += 7;
+        
+        doc.setTextColor(15, 23, 42);
+        w.schedules.forEach(s => {
+          doc.text(`• [${s.platform}] Día: ${s.day} @ ${s.time}`, 18, yPos);
+          yPos += 5;
+        });
+        
+        yPos += 3;
+        doc.setFont("helvetica", "italic");
+        doc.setTextColor(71, 85, 105);
+        const splitScript = doc.splitTextToSize(`Guión: ${w.script}`, 180);
+        doc.text(splitScript, 14, yPos);
+        yPos += (splitScript.length * 5) + 10;
+        
+        doc.setDrawColor(241, 245, 249);
+        doc.line(14, yPos - 5, 196, yPos - 5);
+      });
+
+      doc.save(`Luffy_Calendario_${cal.title.replace(/\s+/g, '_')}.pdf`);
+      showToast("PDF exportado.");
+    };
+  </script>
+
+</body>
+</html>
