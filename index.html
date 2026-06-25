@@ -1215,18 +1215,14 @@
           const types = ["🎬 Shorts serie de sanación", "🎬 Shorts de sanación", "🎵 Cover católico", `📖 Devocionario de sanación (${specAdultTopic || 'General'})`, "✍️ Poema católico"];
           contentType = types[w - 1] || "🎬 Shorts serie de sanación";
           
-          if (w === 1) {
-            schedules = [
-              { day: "Lunes a Viernes", platform: "TikTok", time: "6:00 PM" },
-              { day: "Lunes a Viernes", platform: "Facebook", time: "6:30 PM" },
-              { day: "Lunes a Viernes", platform: "YouTube", time: "7:00 PM" }
-            ];
-          } else if (w === 4) {
-            schedules = [
-              { day: "Lunes a Viernes", platform: "TikTok", time: "6:00 PM" },
-              { day: "Lunes a Viernes", platform: "Facebook", time: "6:30 PM" },
-              { day: "Lunes a Viernes", platform: "YouTube", time: "7:00 PM" }
-            ];
+          if (w === 1 || w === 4) {
+            schedules = [];
+            const daysOfWeek = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+            daysOfWeek.forEach(d => {
+              schedules.push({ day: d, platform: "TikTok", time: "6:00 PM" });
+              schedules.push({ day: d, platform: "Facebook", time: "6:30 PM" });
+              schedules.push({ day: d, platform: "YouTube", time: "7:00 PM" });
+            });
           } else {
             schedules = [{ day: "Jueves", platform: "YouTube", time: "7:00 PM" }];
           }
@@ -1265,22 +1261,23 @@
 
         schedules = schedules.map(s => {
           let dateStr = "";
-          if (s.day.toLowerCase().includes("lunes a viernes")) {
-            // Lunes a Viernes: find the dates for Monday through Friday of this week
-            const datesArr = [];
-            for (let dIndex = 1; dIndex <= 5; dIndex++) {
-              // Calculate day of year
-              const targetDate = new Date(year, month, 1 + startOffset + (dIndex - firstDayOfMonth.getDay() + 7) % 7);
-              // Ensure we stay aligned with the relative week boundaries
-              datesArr.push(formatDateString(targetDate));
-            }
-            dateStr = ` (${datesArr[0]} al ${datesArr[datesArr.length - 1]})`;
-          } else {
-            // Single day
-            const targetDayNum = dayMap[s.day] !== undefined ? dayMap[s.day] : 5;
-            const targetDate = new Date(year, month, 1 + startOffset + (targetDayNum - firstDayOfMonth.getDay() + 7) % 7);
-            dateStr = ` (${formatDateString(targetDate)})`;
-          }
+          // Get the weekday of the 1st of the month (0 = Sun, 1 = Mon, ..., 6 = Sat)
+          let firstDayWeekday = firstDayOfMonth.getDay();
+          // Normalize so that Monday is 0, Tuesday is 1, ..., Sunday is 6
+          const firstDayNormalized = firstDayWeekday === 0 ? 6 : firstDayWeekday - 1;
+          
+          // Normalized weekday of target day
+          const targetDayNum = dayMap[s.day] !== undefined ? dayMap[s.day] : 5;
+          const targetNormalized = targetDayNum === 0 ? 6 : targetDayNum - 1;
+          
+          // Calculate the date
+          // For week 1 (w=1): if firstDayNormalized is <= targetNormalized, the day is in the first week starting from the 1st.
+          // Otherwise, it falls back to the previous week or we adjust. Let's align week 1 with the actual calendar row of the month:
+          const dayOfMonth = 1 + (w - 1) * 7 + (targetNormalized - firstDayNormalized);
+          
+          const targetDate = new Date(year, month, dayOfMonth);
+          dateStr = ` (${formatDateString(targetDate)})`;
+          
           return {
             ...s,
             dateLabel: dateStr
