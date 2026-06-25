@@ -1212,7 +1212,7 @@
             schedules = [{ day: "Martes", platform: "YouTube", time: "7:00 PM" }];
           }
         } else if (state.selectedGroup === "adults") {
-          const types = ["🎬 Shorts serie de sanación", "🎬 Shorts de sanación", "🎵 Cover católico", `📖 Devocionario de sanación (${specAdultTopic})`, "✍️ Poema católico"];
+          const types = ["🎬 Shorts serie de sanación", "🎬 Shorts de sanación", "🎵 Cover católico", `📖 Devocionario de sanación (${specAdultTopic || 'General'})`, "✍️ Poema católico"];
           contentType = types[w - 1] || "🎬 Shorts serie de sanación";
           
           if (w === 1) {
@@ -1223,6 +1223,8 @@
             ];
           } else if (w === 4) {
             schedules = [
+              { day: "Lunes a Viernes", platform: "TikTok", time: "6:00 PM" },
+              { day: "Lunes a Viernes", platform: "Facebook", time: "6:30 PM" },
               { day: "Lunes a Viernes", platform: "YouTube", time: "7:00 PM" }
             ];
           } else {
@@ -1232,19 +1234,58 @@
           const types = ["🎬 Shorts de sanación", "🤔 Shorts de acertijos", "🕊️ Reflexión católica", "❓ Preguntas y respuestas", "🤔 Shorts de adivinanzas"];
           contentType = types[w - 1] || "🎬 Shorts de sanación";
           
-          if (w === 1) {
-            schedules = [
-              { day: "Lunes", platform: "Facebook", time: "6:00 PM" },
-              { day: "Lunes", platform: "YouTube", time: "7:00 PM" }
-            ];
-          } else {
-            schedules = [{ day: "Lunes", platform: "YouTube", time: "7:00 PM" }];
-          }
+          schedules = [
+            { day: "Lunes", platform: "Facebook", time: "6:00 PM" },
+            { day: "Lunes", platform: "YouTube", time: "7:00 PM" }
+          ];
         } else if (state.selectedGroup === "escoge") {
           const types = ["🎬 Shorts de sanación", "🎬 Shorts de sanación", "💬 Frases de sanación", "🎬 Shorts de sanación", "💬 Frases de sanación"];
           contentType = types[w - 1] || "🎬 Shorts de sanación";
           schedules = [{ day: "Miércoles", platform: "Facebook", time: "7:00 PM" }];
         }
+
+        // Helper to format a date to dd/mm/yyyy
+        const formatDateString = (d) => {
+          const dd = String(d.getDate()).padStart(2, '0');
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const yyyy = d.getFullYear();
+          return `${dd}/${mm}/${yyyy}`;
+        };
+
+        // Date calculation for the schedule elements of week 'w'
+        // Let's find the dates corresponding to the days of this week.
+        // We calculate the start date of the week based on first day of month.
+        const year = state.selectedYear;
+        const month = state.selectedMonth;
+        const firstDayOfMonth = new Date(year, month, 1);
+        // Find the first Monday of the month or start from 1st
+        const startOffset = (w - 1) * 7;
+        
+        const dayMap = { "Lunes": 1, "Martes": 2, "Miércoles": 3, "Jueves": 4, "Viernes": 5, "Sábado": 6, "Domingo": 0 };
+
+        schedules = schedules.map(s => {
+          let dateStr = "";
+          if (s.day.toLowerCase().includes("lunes a viernes")) {
+            // Lunes a Viernes: find the dates for Monday through Friday of this week
+            const datesArr = [];
+            for (let dIndex = 1; dIndex <= 5; dIndex++) {
+              // Calculate day of year
+              const targetDate = new Date(year, month, 1 + startOffset + (dIndex - firstDayOfMonth.getDay() + 7) % 7);
+              // Ensure we stay aligned with the relative week boundaries
+              datesArr.push(formatDateString(targetDate));
+            }
+            dateStr = ` (${datesArr[0]} al ${datesArr[datesArr.length - 1]})`;
+          } else {
+            // Single day
+            const targetDayNum = dayMap[s.day] !== undefined ? dayMap[s.day] : 5;
+            const targetDate = new Date(year, month, 1 + startOffset + (targetDayNum - firstDayOfMonth.getDay() + 7) % 7);
+            dateStr = ` (${formatDateString(targetDate)})`;
+          }
+          return {
+            ...s,
+            dateLabel: dateStr
+          };
+        });
 
         weeksData.push({
           weekNum: w,
@@ -1290,15 +1331,32 @@
     };
 
     const checkForLiturgicalFeastAlerts = (month) => {
-      const todayDay = 21;
-      const todayMonth = 5; // June
+      // Use the actual current date
+      const today = new Date();
+      const currentYear = today.getFullYear();
       
       const feastsInMonth = LITURGICAL_FEASTS.filter(f => f.month === month);
       feastsInMonth.forEach(feast => {
-        if (month === todayMonth && (feast.day - todayDay === 3)) {
+        // Create date objects for comparison
+        const feastDate = new Date(currentYear, feast.month, feast.day);
+        
+        // Calculate difference in days (24 * 60 * 60 * 1000 = 86400000 ms)
+        const timeDiff = feastDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+        
+        // Trigger alert only starting 3 days before (diffDays = 3, 2, 1) or on the exact day of the feast (diffDays = 0)
+        // Passed the feast (diffDays < 0), it must not appear.
+        if (diffDays >= 0 && diffDays <= 3) {
+          let message = "";
+          if (diffDays === 0) {
+            message = `🎉 HOY CELEBRAMOS: ${feast.name}`;
+          } else {
+            message = `🔔 ALERTA: Faltan ${diffDays} día${diffDays > 1 ? 's' : ''} para celebrar ${feast.name}`;
+          }
+          
           setTimeout(() => {
-            speakFeastAnnouncement(feast.name);
-            showToast(`🔔 ALERTA: Faltan 3 días para celebrar ${feast.name}`);
+            speakAnnouncementText(diffDays === 0 ? `Hoy celebramos ${feast.name}` : `Atención. Faltan ${diffDays} días para la celebración de ${feast.name}`);
+            showToast(message);
           }, 1000);
         }
       });
@@ -1330,7 +1388,7 @@
             <div class="px-3 py-1.5 rounded-lg text-xs font-medium ${platClass} flex items-center space-x-2">
               <span>📱 ${s.platform || "YouTube"}</span>
               <span class="opacity-75">|</span>
-              <span>📅 ${s.day || "Viernes"}</span>
+              <span>📅 ${s.day || "Viernes"}${s.dateLabel || ""}</span>
               <span class="opacity-75">|</span>
               <span class="text-brand-gold font-bold">⏰ ${s.time || "7:00 PM"}</span>
             </div>
