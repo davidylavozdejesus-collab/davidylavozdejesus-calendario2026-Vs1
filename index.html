@@ -1028,15 +1028,173 @@
         const themeValue = state.weeklyThemes[w] || `Lema de la semana ${w}`;
         const div = document.createElement("div");
         div.className = "space-y-1";
+        
+        let onInputAttr = `oninput="updateWeeklyTheme(${w}, this.value)"`;
+        let onPasteAttr = "";
+        
+        // If it is the first week, let it parse multi-week pastes explicitly
+        if (w === 1) {
+          onInputAttr = `oninput="updateWeeklyTheme(1, this.value)"`;
+          onPasteAttr = `onpaste="handleWeekPasteEvent(event)"`;
+        }
+
         div.innerHTML = `
           <label class="text-xs font-semibold text-slate-400 flex justify-between">
             <span>Semana ${w}</span>
             <span class="text-brand-accent" id="emoji-badge-${w}">Auto-Emoji: ${getAutoEmoji(themeValue)}</span>
           </label>
-          <input type="text" value="${themeValue}" oninput="updateWeeklyTheme(${w}, this.value)" class="w-full px-4 py-2.5 rounded-xl text-white outline-none" />
+          <input type="text" id="weekly-theme-input-${w}" value="${themeValue}" ${onInputAttr} ${onPasteAttr} class="w-full px-4 py-2.5 rounded-xl text-white outline-none" />
         `;
         container.appendChild(div);
       }
+    };
+
+    const handleWeekPasteEvent = (event) => {
+      // Prevent default paste so we can handle it manually
+      event.preventDefault();
+      
+      const clipboardData = event.clipboardData || window.clipboardData;
+      const pastedText = clipboardData.getData('Text');
+      
+      if (pastedText) {
+        const lines = pastedText.split('\n');
+        let parsedAny = false;
+        
+        let currentWeekNum = null;
+        let weekRawThemes = {};
+
+        lines.forEach(line => {
+          const clean = line.trim();
+          if (!clean) return;
+
+          // Check if this line defines a new week
+          const matchSemana = clean.match(/^(?:\*\s*)?semana\s*([1-5])/i);
+          const matchNum = clean.match(/^([1-5])\s*[.\-:]/);
+          
+          if (matchSemana) {
+            currentWeekNum = parseInt(matchSemana[1]);
+            // Take the rest of the line as initial theme candidate (content type like 'Cuento de sanación')
+            const rest = clean.replace(/^(?:\*\s*)?semana\s*([1-5])\s*[:\-\s]*/i, "").trim();
+            if (rest) weekRawThemes[currentWeekNum] = rest;
+          } else if (matchNum) {
+            currentWeekNum = parseInt(matchNum[1]);
+            const rest = clean.replace(/^([1-5])\s*[.\-:]\s*/, "").trim();
+            if (rest) weekRawThemes[currentWeekNum] = rest;
+          } else if (currentWeekNum) {
+            // If we are currently tracking a week, look for "Título:" in this line
+            if (clean.toLowerCase().includes("t\u00EDtulo:") || clean.toLowerCase().includes("titulo:")) {
+              const subMatch = clean.match(/(?:🎯\s*)?(?:t\u00EDtulo|titulo)\s*[:\-]?\s*(.*)/i);
+              if (subMatch && subMatch[1].trim()) {
+                let titleRaw = subMatch[1].trim();
+                // Stop at "📝 Descripción:" or "📝" or " #" if present
+                const stopMarkers = ["📝", "descripci\u00F3n:", "descripcion:", " #"];
+                for (const marker of stopMarkers) {
+                  const idx = titleRaw.toLowerCase().indexOf(marker.toLowerCase());
+                  if (idx > 0) {
+                    titleRaw = titleRaw.substring(0, idx).trim();
+                    break;
+                  }
+                }
+                weekRawThemes[currentWeekNum] = titleRaw;
+              }
+            }
+          }
+        });
+
+        // Apply clean themes to the state and input elements
+        Object.keys(weekRawThemes).forEach(wKey => {
+          const weekNum = parseInt(wKey);
+          let theme = weekRawThemes[wKey];
+
+          // Clean formatting artifacts
+          if (theme.includes("-")) {
+            const parts = theme.split("-");
+            if (parts.length > 1) {
+              theme = parts[parts.length - 1].trim();
+            }
+          }
+          theme = theme.replace(/^[\"\'\*\-\s\u201C\u201D\u2018\u2019]+|[\"\'\*\-\s\u201C\u201D\u2018\u2019]+$/g, '').trim();
+
+          if (theme) {
+            state.weeklyThemes[weekNum] = theme;
+            const inputEl = document.getElementById(`weekly-theme-input-${weekNum}`);
+            if (inputEl) {
+              inputEl.value = theme;
+            }
+            const badgeEl = document.getElementById(`emoji-badge-${weekNum}`);
+            if (badgeEl) {
+              badgeEl.textContent = `Auto-Emoji: ${getAutoEmoji(theme)}`;
+            }
+            parsedAny = true;
+          }
+        });
+
+        if (parsedAny) {
+          showToast("📋 Temas semanales auto-detectados y rellenados.");
+          return;
+        }
+      }
+      
+      // Fallback: normal paste in Week 1 input if no multi-week structures are parsed
+      const selectionStart = event.target.selectionStart;
+      const selectionEnd = event.target.selectionEnd;
+      const textVal = event.target.value;
+      const newValue = textVal.substring(0, selectionStart) + pastedText + textVal.substring(selectionEnd);
+      event.target.value = newValue;
+      updateWeeklyTheme(1, newValue);
+    };
+
+    const handleWeek1Paste = (val) => {
+      // Split the pasted text into lines to look for weekly definitions
+      const lines = val.split('\n');
+      let parsedAny = false;
+      
+      lines.forEach(line => {
+        const clean = line.trim();
+        if (!clean) return;
+
+        // Try matches: 
+        // 1) "Semana 1: Tema" or "Semana 1 - Tema" or "* Semana 1: Tema"
+        // 2) "1. Tema" or "1 - Tema" (where 1 is the week number)
+        let weekNum = null;
+        let theme = "";
+
+        const matchSemana = clean.match(/^(?:\*\s*)?semana\s*([1-5])\s*[:\-\s]\s*(.*)/i);
+        if (matchSemana) {
+          weekNum = parseInt(matchSemana[1]);
+          theme = matchSemana[2].trim();
+        } else {
+          const matchNum = clean.match(/^([1-5])\s*[\.\-\:]\s*(.*)/);
+          if (matchNum) {
+            weekNum = parseInt(matchNum[1]);
+            theme = matchNum[2].trim();
+          }
+        }
+
+        if (weekNum && theme) {
+          // Remove wrapping asterisks/quotes if any
+          theme = theme.replace(/^[\"\'\*\-\s]+|[\"\'\*\-\s]+$/g, '').trim();
+          
+          state.weeklyThemes[weekNum] = theme;
+          const inputEl = document.getElementById(`weekly-theme-input-${weekNum}`);
+          if (inputEl) {
+            inputEl.value = theme;
+          }
+          const badgeEl = document.getElementById(`emoji-badge-${weekNum}`);
+          if (badgeEl) {
+            badgeEl.textContent = `Auto-Emoji: ${getAutoEmoji(theme)}`;
+          }
+          parsedAny = true;
+        }
+      });
+
+      if (parsedAny) {
+        showToast("📋 Temas semanales auto-detectados y rellenados.");
+        return;
+      }
+      
+      // Standard single update if no multi-week patterns were parsed
+      updateWeeklyTheme(1, val);
     };
 
     const updateWeeklyTheme = (weekNum, value) => {
@@ -1057,9 +1215,7 @@
 
       // Clear all visible input fields and emoji badges
       for (let w = 1; w <= weeksCount; w++) {
-        const input = document.querySelector(
-          `#weekly-themes-container input[oninput="updateWeeklyTheme(${w}, this.value)"]`
-        );
+        const input = document.getElementById(`weekly-theme-input-${w}`);
         if (input) {
           input.value = "";
         }
@@ -1155,14 +1311,32 @@
         let currentWeekNum = null;
         lines.forEach(line => {
           const clean = line.trim();
-          if (clean.toLowerCase().includes("tema:") || clean.toLowerCase().includes("título:")) {
+          
+          // Only parse title from the pasted text if the user didn't write one
+          if (!state.topicTitle && (clean.toLowerCase().includes("tema:") || clean.toLowerCase().includes("título:"))) {
             parsedTitle = clean.replace(/^(tema|título|titulo)\s*[:\-]\s*/i, "");
           }
           
           const weekMatch = clean.match(/^semana\s*([1-5])\s*[:\-]?\s*(.*)/i);
           if (weekMatch) {
             currentWeekNum = parseInt(weekMatch[1]);
-            const themeContent = weekMatch[2].trim();
+            let themeContent = weekMatch[2].trim();
+            
+            // Clean up formats like: "Cuento de sanación - 🎯 Título: 🩹 ¡Adiós Tristeza!"
+            // If it contains "Título:", let's extract the part after it.
+            if (themeContent.toLowerCase().includes("título:")) {
+              const subMatch = themeContent.match(/t\u00EDtulo\s*:\s*(.*)/i);
+              if (subMatch) {
+                themeContent = subMatch[1].trim();
+              }
+            } else if (themeContent.includes("-")) {
+              // Fallback: take the last part after the dash if it seems like a format header prefix
+              const parts = themeContent.split("-");
+              if (parts.length > 1) {
+                themeContent = parts[parts.length - 1].trim();
+              }
+            }
+
             if (themeContent) {
               finalThemes[currentWeekNum] = themeContent;
             }
@@ -1366,7 +1540,7 @@
 
       const groupData = AUDIENCES[cal.group] || { title: "General", icon: "📋" };
 
-      document.getElementById("cal-summary-title").textContent = cal.title;
+      document.getElementById("cal-summary-title").innerHTML = `🎯 Título: 🤠 ${cal.title}`;
       document.getElementById("cal-summary-group").textContent = groupData.title;
       document.getElementById("cal-summary-month").textContent = `${MONTHS[cal.month]} ${cal.year}`;
 
